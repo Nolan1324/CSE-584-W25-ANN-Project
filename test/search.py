@@ -3,22 +3,25 @@ from pymilvus import MilvusClient
 import time
 
 from sift import SiftDataset
+from client import get_client
 
-client = MilvusClient("milvus.db")
+client = get_client()
 
-dataset = SiftDataset('siftsmall', 'siftsmall', with_base=False)
+collection_name = 'siftsmall'
 
-search_vector_id = 10
+dataset = SiftDataset(collection_name, collection_name, with_base=False)
+
+search_vector_id = 0
 
 start_time = time.time()
 res = client.search(
-    collection_name="siftsmall",
+    collection_name=collection_name,
     data=[dataset.query[search_vector_id,:]],
-    limit=1,
-    output_fields=["vector"],
+    limit=100,
+    output_fields=["id"],
 )
 end_time = time.time()
 
 print(f'Search time: {end_time - start_time}')
-print(dataset.ground_truth[search_vector_id][0])
-print(res[0][0]['id'])
+print(dataset.ground_truth[search_vector_id])
+print([x['id'] for x in res[0]])

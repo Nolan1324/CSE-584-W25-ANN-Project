@@ -1,3 +1,8 @@
+## Milvus setup
+
+- `pip install pymilvus`
+- Run `./standalone_embed.sh` to start Docker container. Check it is running at `http://127.0.0.1:9091/webui/`
+
 ## Use
 
 - Download datasets with `download_dataset.sh`
