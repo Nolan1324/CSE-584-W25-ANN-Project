@@ -22,7 +22,7 @@ class SiftDataset():
             self.num_base_vecs = self.base.shape[0]
         self.ground_truth = read('groundtruth', 'ivecs')
         self.learn = read('learn', 'fvecs')
-        self.query = read('learn', 'fvecs')
+        self.query = read('query', 'fvecs')
         self.dim = self.query.shape[1]
     
 if __name__ == '__main__':
