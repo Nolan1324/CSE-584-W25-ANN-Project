@@ -18,7 +18,8 @@ def create_collection_schema(name):
     )
     attrib_schema = FieldSchema(
         name="attribute",
-        dtype=DataType.INT32,
+        dtype=DataType.INT64,
+        is_partition_key=True,
     )
     vector_schema = FieldSchema(
         name="vector",
@@ -41,7 +42,7 @@ def create_collection_schema(name):
     index_params.add_index(
         field_name="vector",
         metric_type="L2",
-        index_type="FLAT",
+        index_type="HNSW",
         index_name="vector_index",
     )
 
@@ -74,4 +75,4 @@ def create_and_populate_collection(name):
 
 if __name__ == '__main__':
     create_and_populate_collection('siftsmall')
-    # create_and_populate_collection('sift')
+    create_and_populate_collection('sift')

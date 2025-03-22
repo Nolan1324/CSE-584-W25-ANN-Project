@@ -7,7 +7,7 @@ from client import get_client
 
 client = get_client()
 
-collection_name = 'siftsmall'
+collection_name = 'sift'
 
 dataset = SiftDataset(collection_name, collection_name, with_base=False)
 
@@ -19,6 +19,7 @@ res = client.search(
     data=[dataset.query[search_vector_id,:]],
     limit=100,
     output_fields=["id"],
+    filter="attribute < 10"
 )
 end_time = time.time()
 
