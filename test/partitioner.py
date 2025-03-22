@@ -26,9 +26,14 @@ class Partitioner():
 
     def query_partitions(self, low: Optional[int] = None, high: Optional[int] = None):
         for name, range_ in zip(self.partition_names, self.partition_ranges):
-            if (low is None or low <= range_[0]) and (high is None or high >= range_[1]):
+            r_low, r_high = range_
+            if (r_low if low is None else max(r_low, low)) <= (r_high if high is None else min(r_high, high)):
                 yield name
 
 if __name__ == '__main__':
-    partitioner = Partitioner([(0, 10), (11, 1000)])
+    partitioner = Partitioner([(0, 100), (101, 1000)])
     print(list(partitioner.query_partitions(low=None, high=10)))
+    print(list(partitioner.query_partitions(low=0, high=10)))
+    print(list(partitioner.query_partitions(low=0, high=100)))
+    print(list(partitioner.query_partitions(low=500, high=None)))
+    print(list(partitioner.query_partitions(low=10, high=200)))
