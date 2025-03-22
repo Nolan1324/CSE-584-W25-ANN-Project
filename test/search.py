@@ -18,7 +18,7 @@ class Searcher():
         search_vector_id = 0
 
         if self.partitioner:
-            partitions = list(self.partitioner.query_partitions(low=101, high=1000))
+            partitions = list(self.partitioner.query_partitions(low=None, high=100))
             print(partitions)
         else:
             partitions = None
