@@ -1,3 +1,4 @@
+from typing import Optional
 import numpy as np
 from pymilvus import MilvusClient
 import time
@@ -7,7 +8,7 @@ from client import get_client
 from partitioner import Partitioner
 
 class Searcher():
-    def __init__(self, partitioner=None):
+    def __init__(self, partitioner: Optional[Partitioner] =None):
         self.client = get_client()
         self.partitioner = partitioner
         self.collection_name = 'siftsmall'
@@ -16,6 +17,12 @@ class Searcher():
     def do_search(self):
         search_vector_id = 0
 
+        if self.partitioner:
+            partitions = list(self.partitioner.query_partitions(low=101, high=1000))
+            print(partitions)
+        else:
+            partitions = None
+
         start_time = time.time()
         res = self.client.search(
             collection_name=self.collection_name,
@@ -23,8 +30,7 @@ class Searcher():
             limit=100,
             output_fields=["id"],
             filter="attribute <= 100",
-            partition_names=list(self.partitioner.query_partitions(low=None, high=10)) \
-                if self.partitioner is not None else None
+            partition_names=partitions
         )
         end_time = time.time()
 
@@ -33,5 +39,6 @@ class Searcher():
         print([x['id'] for x in res[0]])
 
 if __name__ == '__main__':
+    # searcher = Searcher()
     searcher = Searcher(Partitioner([(0, 100), (101, 1000)]))
     searcher.do_search()

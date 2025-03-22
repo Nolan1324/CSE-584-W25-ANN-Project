@@ -1,3 +1,4 @@
+from typing import Optional
 import numpy as np
 from pymilvus import CollectionSchema, DataType, FieldSchema, MilvusClient
 import time
@@ -9,9 +10,13 @@ from partitioner import Partitioner
 
 
 class Creator():
-    def __init__(self, partitioner=None):
+    def __init__(self, partitioner=None, num_auto_partitions: Optional[int] =None):
         self.client = get_client()
         self.partitioner = partitioner
+        self.num_auto_partitions = num_auto_partitions
+
+        if partitioner is not None and num_auto_partitions is not None:
+            raise ValueError('Cannot specify both custom partitioner and auto partitioner at the same time')
 
     def create_collection_schema(self, name):
         if self.client.has_collection(name):
@@ -25,6 +30,7 @@ class Creator():
         attrib_schema = FieldSchema(
             name="attribute",
             dtype=DataType.INT64,
+            is_partition_key=self.num_auto_partitions is not None
         )
         vector_schema = FieldSchema(
             name="vector",
@@ -39,10 +45,12 @@ class Creator():
 
         self.client.create_collection(
             collection_name=name,
-            schema=schema
+            schema=schema,
+            num_partitions=self.num_auto_partitions,
         )
 
-        self.partitioner.add_partitions_to_collection(self.client, name)
+        if self.partitioner is not None:
+            self.partitioner.add_partitions_to_collection(self.client, name)
 
         index_params = MilvusClient.prepare_index_params()
 
@@ -91,7 +99,11 @@ class Creator():
                     if self.partitioner is not None else None  
             )
 
+        self.client.flush(name)
+
 if __name__ == '__main__':
-    Creator(Partitioner([(0, 100), (101, 1000)])) \
-        .create_and_populate_collection('siftsmall')
+    # creator = Creator()
+    # creator = Creator(num_auto_partitions=16)
+    creator = Creator(Partitioner([(0, 100), (101, 1000)]))
+    creator.create_and_populate_collection('siftsmall')
     # create_and_populate_collection('sift')
