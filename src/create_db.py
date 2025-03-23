@@ -1,4 +1,5 @@
-from typing import Optional
+from pathlib import Path
+from typing import List, Optional
 import numpy as np
 from pymilvus import CollectionSchema, DataType, FieldSchema, MilvusClient
 import time
@@ -7,10 +8,10 @@ from tqdm import tqdm
 from sift import SiftDataset
 from client import get_client
 from partitioner import Partitioner
-
+from attributes import uniform_attributes, uniform_attributes_example
 
 class Creator():
-    def __init__(self, partitioner=None, num_auto_partitions: Optional[int] =None):
+    def __init__(self, partitioner: Optional[Partitioner] = None, num_auto_partitions: Optional[int] =None):
         self.client = get_client()
         self.partitioner = partitioner
         self.num_auto_partitions = num_auto_partitions
@@ -70,34 +71,39 @@ class Creator():
         self.client.load_collection(name)
 
 
-    def create_and_populate_collection(self, name):
-        print(f'Creating collection {name}')
+    def populate_collection(self, name: str, dataset: SiftDataset, attributes: 'np.ndarray[np.int32]'):
+        assert(dataset.num_base_vecs == attributes.shape[0])
+        
+        if self.partitioner is None:
+            CHUNK_SIZE = 10000
 
-        np.random.seed(584)
+            for i in tqdm(range(0, dataset.num_base_vecs, CHUNK_SIZE)):
+                print(f'{i}/{dataset.num_base_vecs}')
+                
+                data = [{'id': i + offset, 'vector': list(vector), 'attribute': attributes[i + offset]} 
+                        for offset, vector in enumerate(iter(dataset.base[i:i+CHUNK_SIZE]))]
+                res = self.client.insert(collection_name=name, data=data)
+        else:
+            CHUNK_SIZE = 10000
 
-        self.create_collection_schema(name)
+            def _insert_batch(partition_name: str, batch: List[int]):
+                data = [{'id': index, 'vector': list(dataset.base[index]), 'attribute': attributes[index]} 
+                            for index in batch]
+                res = self.client.insert(collection_name=name, data=data, partition_name=partition_name)
 
-        dataset = SiftDataset(name, name)
+            partition_batches = {partition_name: [] for partition_name in self.partitioner.partition_names}
+            for i in tqdm(range(0, dataset.num_base_vecs)):
+                partition_name = self.partitioner.get_partition(attributes[i])
+                batch = partition_batches[partition_name]
+                batch.append(i)
 
-        # CHUNK_SIZE = 10000
-        # for i in range(0, dataset.num_base_vecs, CHUNK_SIZE):
-        #     print(f'{i}/{dataset.num_base_vecs}')
-            
-        #     attrs = np.random.randint(0, 1000, size=CHUNK_SIZE)
-        #     data = [{'id': i + offset, 'vector': list(vector), 'attribute': attrs[offset]} 
-        #             for offset, vector in enumerate(iter(dataset.base[i:i+CHUNK_SIZE]))]
-        #     res = client.insert(collection_name=name, data=data)
-
-        # attrs = np.random.randint(0, 1000, size=dataset.num_base_vecs)
-        for i in tqdm(range(0, dataset.num_base_vecs)):
-            attr = int(1000 * (i / dataset.num_base_vecs))
-            data = {'id': i, 'vector': list(dataset.base[i]), 'attribute': attr}
-            res = self.client.insert(
-                collection_name=name,
-                data=data,
-                partition_name=self.partitioner.query_partition(attr)
-                    if self.partitioner is not None else None  
-            )
+                if len(batch) >= CHUNK_SIZE:
+                    _insert_batch(partition_name, batch)
+                    batch.clear()
+            for partition_name, batch in partition_batches.items():
+                if batch:
+                    _insert_batch(partition_name, batch)
+                    batch.clear()
 
         self.client.flush(name)
 
@@ -105,5 +111,8 @@ if __name__ == '__main__':
     # creator = Creator()
     # creator = Creator(num_auto_partitions=16)
     creator = Creator(Partitioner([(0, 100), (101, 1000)]))
-    creator.create_and_populate_collection('siftsmall')
-    # create_and_populate_collection('sift')
+    
+    name = 'sift'
+    dataset = SiftDataset('../data' / Path(name), name)
+    creator.create_collection_schema(name)
+    creator.populate_collection(name, dataset, uniform_attributes_example(dataset.num_base_vecs))
