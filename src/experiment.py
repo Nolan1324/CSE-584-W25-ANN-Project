@@ -1,3 +1,4 @@
+import random
 import logging
 from pathlib import Path
 from datetime import datetime
@@ -30,3 +31,6 @@ def configure_logging(name: str) -> tuple[logging.Logger, Path]:
 if __name__ == "__main__":
     name = "test"
     logger, experiment_dir = configure_logging(name)
+    
+    seed = random.randint(0, 1_000_000)
+    logger.info(f"Seed: {seed}")
