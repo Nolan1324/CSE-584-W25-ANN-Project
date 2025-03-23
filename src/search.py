@@ -6,7 +6,7 @@ import time
 
 from sift import SiftDataset
 from client import get_client
-from partitioner import Partitioner
+from partitioner import Partitioner, RangePartitioner
 from attributes import uniform_attributes_example
 
 class Searcher():
@@ -41,7 +41,7 @@ class Searcher():
         print([x['id'] for x in res[0]])
 
 if __name__ == '__main__':
-    partitioner = Partitioner([(0, 100), (101, 1000)])
+    partitioner = RangePartitioner([(0, 100), (101, 1000)])
     # searcher = Searcher()
     searcher = Searcher('sift', uniform_attributes_example(1000000), partitioner)
     searcher.do_search()

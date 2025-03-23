@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 from sift import SiftDataset
 from client import get_client
-from partitioner import Partitioner
+from partitioner import Partitioner, RangePartitioner
 from attributes import uniform_attributes, uniform_attributes_example
 
 class Creator():
@@ -110,7 +110,7 @@ class Creator():
 if __name__ == '__main__':
     # creator = Creator()
     # creator = Creator(num_auto_partitions=16)
-    creator = Creator(Partitioner([(0, 100), (101, 1000)]))
+    creator = Creator(RangePartitioner([(0, 100), (101, 1000)]))
     
     name = 'sift'
     dataset = SiftDataset('../data' / Path(name), name)
