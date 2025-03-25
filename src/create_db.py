@@ -11,7 +11,7 @@ from partitioner import Partitioner, RangePartitioner
 from attributes import uniform_attributes, uniform_attributes_example
 
 class Creator():
-    def __init__(self, partitioner: Optional[Partitioner] = None, num_auto_partitions: Optional[int] =None):
+    def __init__(self, partitioner: Optional[Partitioner] = None, num_auto_partitions: Optional[int] = None):
         self.client = get_client()
         self.partitioner = partitioner
         self.num_auto_partitions = num_auto_partitions
@@ -19,7 +19,7 @@ class Creator():
         if partitioner is not None and num_auto_partitions is not None:
             raise ValueError('Cannot specify both custom partitioner and auto partitioner at the same time')
 
-    def create_collection_schema(self, name):
+    def create_collection_schema(self, name, index_type: str = 'HNSW'):
         if self.client.has_collection(name):
             self.client.drop_collection(name)
 
@@ -40,7 +40,7 @@ class Creator():
         )
         schema = CollectionSchema(
             fields=[id_schema, vector_schema, attrib_schema],
-            description="Test attributes on SIF",
+            description="Test attributes on SIFT",
             enable_dynamic_field=False,
         )
 
@@ -58,7 +58,7 @@ class Creator():
         index_params.add_index(
             field_name="vector",
             metric_type="L2",
-            index_type="HNSW",
+            index_type=index_type,
             index_name="vector_index",
         )
 
