@@ -174,3 +174,8 @@ cython_debug/
 .pypirc
 
 .vscode
+
+data/
+!download_data.sh
+bin/
+!standalone_embed.sh
