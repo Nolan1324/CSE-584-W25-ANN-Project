@@ -1,7 +1,6 @@
-
 from os import PathLike
 from pathlib import Path
-from typing import Callable, Literal
+from typing import Literal
 
 from fvecs import fvecs_read, ivecs_read
 
@@ -25,6 +24,6 @@ class SiftDataset():
         self.query = read('query', 'fvecs')
         self.dim = self.query.shape[1]
     
+    
 if __name__ == '__main__':
     dataset = SiftDataset('siftsmall', 'siftsmall')
-    breakpoint()

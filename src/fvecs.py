@@ -1,5 +1,6 @@
 import numpy as np
 
+
 # https://gist.github.com/danoneata/49a807f47656fedbb389
 def ivecs_read(filename):
     fv = np.fromfile(filename, dtype=np.int32)
@@ -14,9 +15,6 @@ def ivecs_read(filename):
     fv = fv.copy()
     return fv
 
+
 def fvecs_read(filename):
     return ivecs_read(filename).view(np.float32)
-
-if __name__ == '__main__':
-    sift = ivecs_read('siftsmall/siftsmall_groundtruth.ivecs')
-    print(sift)

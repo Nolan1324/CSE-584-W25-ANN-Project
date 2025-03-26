@@ -179,3 +179,4 @@ data/
 !download_data.sh
 bin/
 !standalone_embed.sh
+experiments/temp*

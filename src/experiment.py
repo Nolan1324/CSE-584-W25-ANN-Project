@@ -1,22 +1,52 @@
 import random
 import logging
 import json
+import subprocess
+import os
 from pathlib import Path
 from datetime import datetime
+
+import numpy as np
+import matplotlib.pyplot as plt
+from tqdm import tqdm
+from dotenv import load_dotenv
 
 from sift import SiftDataset
 from create_db import Creator
 from partitioner import RangePartitioner
 from attributes import uniform_attributes
+from search import Searcher
+from utils import Timer
 
 
-EXPERIMENT_PATH = Path(__file__).parent.parent / "experiments"
-DATASET_PATH = Path(__file__).parent.parent / "data"
+plt.style.use("ggplot")
+
+
+ROOT_PATH = Path(__file__).parent.parent.resolve()
+EXPERIMENT_PATH = ROOT_PATH / "experiments"
+DATASET_PATH = ROOT_PATH / "data"
+BIN_PATH = ROOT_PATH / "bin"
+CONFIG_PATH = ROOT_PATH / "config"
+
+os.chdir(BIN_PATH)
+load_dotenv(CONFIG_PATH / ".env")
+
+
+def run_docker_command(command: str) -> None:
+    process = subprocess.run(
+        ["sudo", "-S", BIN_PATH / "standalone_embed.sh", command],
+        input=os.getenv("PASSWORD") + "\n",
+        capture_output=True,
+        text=True,
+    )
+
+    if process.returncode != 0:
+        raise RuntimeError(f"Failed to run command: {process.stdout}")
 
 
 def configure_logging(name: str) -> tuple[logging.Logger, Path]:
-    timestamp = datetime.now().strftime("_%d_%H:%M:%S")
-    experiment_dir = EXPERIMENT_PATH / f"{name}{timestamp}"
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    experiment_dir = EXPERIMENT_PATH / f"{name} ({timestamp})"
     experiment_dir.mkdir()
     
     logger = logging.getLogger(name)
@@ -35,14 +65,36 @@ def configure_logging(name: str) -> tuple[logging.Logger, Path]:
     return logger, experiment_dir
 
 
-def run_test(config: dict) -> dict:
-    dataset = SiftDataset(DATASET_PATH / test_config["dataset"], test_config["dataset"])
-    attributes = uniform_attributes(dataset.num_base_vecs, 1, test_config["seed"], int, 0, 100).flatten()
+def run_test(logger: logging.Logger, config: dict, experiment_dir: Path) -> dict:
+    dataset = SiftDataset(DATASET_PATH / config["dataset"], config["dataset"])
+    attributes = uniform_attributes(dataset.num_base_vecs, 1, config["seed"], int, 0, 1000).flatten()
     
+    logger.info("Creating collection...")
+    creator = Creator(RangePartitioner([(0, 100), (101, 1000)]))
+    creator.create_collection_schema(config["dataset"])
+    creator.populate_collection(config["dataset"], dataset, attributes)
+    logger.info("Collection created.")
+    
+    logger.info("Running search...")
     partitioner = RangePartitioner([(0, 100), (101, 1000)])
-    creator = Creator(partitioner)
-    creator.create_collection_schema(test_config["name"])
-    creator.populate_collection(test_config["name"], dataset, attributes)
+    searcher = Searcher(config["dataset"], attributes, partitioner)
+    times = []
+    indices = np.arange(10_000)
+    for index in tqdm(indices):
+        if attributes[index] > 100:
+            continue
+        with Timer() as timer:
+            searcher.do_search(index, upper_bound=100)
+        times.append(timer.duration)
+    logger.info(f"Search times: {times}")
+    logger.info(f"Average search time: {np.mean(times)}")
+    logger.info(f"Median search time: {np.median(times)}")
+    logger.info(f"Max search time: {np.max(times)}")
+    logger.info(f"Min search time: {np.min(times)}")
+    logger.info(f"Standard deviation of search times: {np.std(times)}")
+    plt.scatter(np.arange(len(times)), times)
+    plt.savefig(experiment_dir / "plot.png", dpi=300)
+    logger.info("Search complete.")
     
     return {}
 
@@ -50,7 +102,7 @@ def run_test(config: dict) -> dict:
 if __name__ == "__main__":
     seed = random.randint(0, 1_000_000)
     test_config = {
-        "name": "test",
+        "name": "temp",
         "dataset": "sift",
         "partitioner": "range",
         "n_partitions": 10,
@@ -63,10 +115,22 @@ if __name__ == "__main__":
     logger, experiment_dir = configure_logging(test_config["name"])
     with open(experiment_dir / "config.json", "w") as config_file:
         json.dump(test_config, config_file, indent=4)
-    
+
+    logger.info("Starting docker container...")
+    run_docker_command("start")
+    run_docker_command("stop")
+    logger.info("Copying config files to docker container...")
+    p = subprocess.run(
+        ["sudo", "cp", "-f", CONFIG_PATH / "user.yaml", BIN_PATH / "user.yaml"],
+        input=os.getenv("PASSWORD") + "\n",
+        capture_output=True,
+        text=True,
+    )
+    run_docker_command("start")
+    logger.info("Docker container started.")
+
     try:
-        logger.info("Starting test...")
-        results = run_test(test_config)
+        results = run_test(logger, test_config, experiment_dir)
         logger.info("Test succeeded.")
         with open(experiment_dir / "results.json", "w") as results_file:
             json.dump(results, results_file, indent=4)
@@ -74,3 +138,8 @@ if __name__ == "__main__":
     except Exception as e:
         logger.exception(e)
         logger.info("Test failed.")
+        
+    logger.info("Cleaning up docker container...")
+    run_docker_command("stop")
+    run_docker_command("delete")
+    logger.info("Docker container stopped and deleted.")
