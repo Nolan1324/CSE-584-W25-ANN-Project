@@ -56,7 +56,6 @@ cover/
 *.pot
 
 # Django stuff:
-*.log
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
@@ -175,8 +174,8 @@ cython_debug/
 
 .vscode
 
-data/
+data/datasets
 !download_data.sh
 bin/
 !standalone_embed.sh
-experiments/temp*
+data/experiments/temp*

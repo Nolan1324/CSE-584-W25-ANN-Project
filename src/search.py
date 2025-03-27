@@ -21,7 +21,7 @@ class Searcher():
         self.client = get_client()
         self.partitioner = partitioner
         self.collection_name = collection_name
-        self.dataset = SiftDataset('../data' / Path(self.collection_name), self.collection_name, with_base=False)
+        self.dataset = SiftDataset('../data/datasets' / Path(self.collection_name), self.collection_name, with_base=False)
         self.attributes = attributes
 
     def do_search(self, search_vector_id, upper_bound: int, limit: int = 100):
