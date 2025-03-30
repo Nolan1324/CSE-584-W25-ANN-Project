@@ -24,7 +24,10 @@ def test(logger: logging.Logger, config: dict, experiment_dir: Path) -> dict:
         if attributes[index] >= 10:
             continue
         with Timer() as timer:
-            searcher.do_search(index, upper_bound=100)
+            if random.randint(1, 100) <= 25:
+                searcher.do_search(index, upper_bound= int(1000 * config["selectivity"]))
+            else:
+                searcher.do_search(index, None)
         times.append(timer.duration)
     logger.info("Search complete.")
     
@@ -50,6 +53,9 @@ if __name__ == "__main__":
         "dataset": ["sift"],
         "name": ["basic_experiment"],
         "test_function": [test],
+        "selectivity": [0.1, 0.25, 0.5],
+        "filter_percentage": [0.25, 0.5, 0.75],
+        "partitioner": ["range", "mod"]
     }
     
     for config in (dict(zip(experiment_grid.keys(), values)) for values in product(*experiment_grid.values())):

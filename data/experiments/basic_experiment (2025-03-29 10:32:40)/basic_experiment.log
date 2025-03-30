@@ -1,0 +1,14 @@
+2025-03-29 10:32:40,448 | basic_experiment | INFO     | Logging to /mnt/c/Users/garci/Documents/Masters/CSE-584-W25-ANN-Project/data/experiments/basic_experiment (2025-03-29 10:32:40)/basic_experiment.log
+2025-03-29 10:32:40,454 | basic_experiment | INFO     | Starting docker container...
+2025-03-29 10:33:21,261 | basic_experiment | INFO     | Copying config files to docker container...
+2025-03-29 10:33:52,840 | basic_experiment | INFO     | Docker container started.
+2025-03-29 10:33:52,840 | basic_experiment | INFO     | Dashboard: http://127.0.0.1:9091/webui/
+2025-03-29 10:34:01,351 | basic_experiment | INFO     | Partitions (5): [(0, 19), (20, 39), (40, 59), (60, 79), (80, 99)]
+2025-03-29 10:34:02,857 | basic_experiment | INFO     | Collection schema created.
+2025-03-29 10:35:05,007 | basic_experiment | INFO     | Collection created.
+2025-03-29 10:35:05,013 | basic_experiment | INFO     | Running search...
+2025-03-29 10:36:04,191 | basic_experiment | INFO     | Search complete.
+2025-03-29 10:36:04,558 | basic_experiment | INFO     | Test succeeded.
+2025-03-29 10:36:04,571 | basic_experiment | INFO     | Test saved.
+2025-03-29 10:36:04,572 | basic_experiment | INFO     | Cleaning up docker container...
+2025-03-29 10:36:13,103 | basic_experiment | INFO     | Docker container stopped and deleted.

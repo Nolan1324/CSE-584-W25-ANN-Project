@@ -1,0 +1,23 @@
+2025-03-30 01:59:57,923 | basic_experiment | INFO     | Logging to /mnt/c/Users/garci/Documents/Masters/CSE-584-W25-ANN-Project/data/experiments/basic_experiment (2025-03-30 01:59:57)/basic_experiment.log
+2025-03-30 01:59:57,925 | basic_experiment | INFO     | Starting docker container...
+2025-03-30 02:00:39,958 | basic_experiment | INFO     | Copying config files to docker container...
+2025-03-30 02:01:11,510 | basic_experiment | INFO     | Docker container started.
+2025-03-30 02:01:11,511 | basic_experiment | INFO     | Dashboard: http://127.0.0.1:9091/webui/
+2025-03-30 02:01:13,607 | basic_experiment | INFO     | Partitions (5): [(0, 199), (200, 399), (400, 599), (600, 799), (800, 999)]
+2025-03-30 02:01:14,648 | basic_experiment | INFO     | Collection schema created.
+2025-03-30 02:02:00,624 | basic_experiment | INFO     | Collection created.
+2025-03-30 02:02:00,633 | basic_experiment | INFO     | Running search...
+2025-03-30 02:02:01,530 | basic_experiment | ERROR    | '<=' not supported between instances of 'int' and 'NoneType'
+Traceback (most recent call last):
+  File "/mnt/c/Users/garci/Documents/Masters/CSE-584-W25-ANN-Project/src/experiment_utils.py", line 111, in run_test
+    results = config["test_function"](logger, config, experiment_dir)
+  File "/mnt/c/Users/garci/Documents/Masters/CSE-584-W25-ANN-Project/src/basic_experiment.py", line 30, in test
+    searcher.do_search(index, None)
+  File "/mnt/c/Users/garci/Documents/Masters/CSE-584-W25-ANN-Project/src/search.py", line 54, in do_search
+    ground_truth=[i for i in self.dataset.ground_truth[search_vector_id] if self.attributes[i] <= upper_bound],
+  File "/mnt/c/Users/garci/Documents/Masters/CSE-584-W25-ANN-Project/src/search.py", line 54, in <listcomp>
+    ground_truth=[i for i in self.dataset.ground_truth[search_vector_id] if self.attributes[i] <= upper_bound],
+TypeError: '<=' not supported between instances of 'int' and 'NoneType'
+2025-03-30 02:02:01,539 | basic_experiment | INFO     | Test failed.
+2025-03-30 02:02:01,540 | basic_experiment | INFO     | Cleaning up docker container...
+2025-03-30 02:02:13,068 | basic_experiment | INFO     | Docker container stopped and deleted.

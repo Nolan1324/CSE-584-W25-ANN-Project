@@ -31,16 +31,31 @@ class Searcher():
             partitions = None
 
         start_time = time.time()
-        res = self.client.search(
-            collection_name=self.collection_name,
-            data=[self.dataset.query[search_vector_id,:]],
-            limit=limit,
-            output_fields=["id"],
-            filter=f"attribute <= {upper_bound}",
-            partition_names=partitions
-        )
+        if upper_bound is None:
+            res = self.client.search(
+                collection_name=self.collection_name,
+                data=[self.dataset.query[search_vector_id,:]],
+                limit=limit,
+                output_fields=["id"],
+                partition_names=partitions
+            )
+        else:
+            res = self.client.search(
+                collection_name=self.collection_name,
+                data=[self.dataset.query[search_vector_id,:]],
+                limit=limit,
+                output_fields=["id"],
+                filter=f"attribute <= {upper_bound}",
+                partition_names=partitions
+            )
         end_time = time.time()
-
+        
+        if upper_bound is None:
+            return self.SearchResults(
+                ground_truth=[i for i in self.dataset.ground_truth[search_vector_id]],
+                results=[x['id'] for x in res[0]],
+                time=end_time-start_time
+            )
         return self.SearchResults(
             ground_truth=[i for i in self.dataset.ground_truth[search_vector_id] if self.attributes[i] <= upper_bound],
             results=[x['id'] for x in res[0]],

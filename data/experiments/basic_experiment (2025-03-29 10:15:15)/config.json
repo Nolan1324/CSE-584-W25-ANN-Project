@@ -1,0 +1,9 @@
+{
+    "vector_index": "HNSW",
+    "n_partitions": 5,
+    "dataset": "sift",
+    "name": "basic_experiment",
+    "test_function": "test",
+    "seed": 746041,
+    "trial": 0
+}

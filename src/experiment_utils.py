@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 
 from sift import SiftDataset
 from create_db import Creator
-from partitioner import RangePartitioner
+from partitioner import RangePartitioner, ModPartitioner
 from attributes import uniform_attributes
 
 
@@ -66,11 +66,14 @@ def configure_logging(name: str) -> tuple[logging.Logger, Path]:
 
 def setup_db(logger: logging.Logger, config: dict) -> tuple[RangePartitioner, np.ndarray]:
     dataset = SiftDataset(DATASET_PATH / "datasets" / config["dataset"], config["dataset"])
-    attributes = uniform_attributes(dataset.num_base_vecs, 1, config["seed"], int, 0, 100).flatten()
+    attributes = uniform_attributes(dataset.num_base_vecs, 1, config["seed"], int, 0, 1000).flatten()
     
-    step = 100 // config["n_partitions"]
-    partitions = [(round(i), round(i + step - 1)) for i in np.linspace(0, 100, config["n_partitions"], endpoint=False)]
-    partitioner = RangePartitioner(partitions)
+    step = 1000 // config["n_partitions"]
+    partitions = [(round(i), round(i + step - 1)) for i in np.linspace(0, 1000, config["n_partitions"], endpoint=False)]
+    if (config["partitioner"] == "range"):
+        partitioner = RangePartitioner(partitions)
+    else:
+        partitioner = ModPartitioner(config["n_partitions"])
     logger.info(f"Partitions ({len(partitions)}): {partitions}")
     
     creator = Creator(partitioner)
