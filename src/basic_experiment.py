@@ -77,9 +77,9 @@ if __name__ == "__main__":
         "dataset": ["sift"],
         "name": ["basic_experiment"],
         "test_function": [test],
-        "selectivity": [0.1],
-        "filter_percentage": [0.25],
-        "partitioner": ["mod"]
+        "selectivity": [0.1, 0.25, 0.5],
+        "filter_percentage": [0.25, 0.5, 0.75],
+        "partitioner": ["range", "mod"]
     }
     
     for config in (dict(zip(experiment_grid.keys(), values)) for values in product(*experiment_grid.values())):
