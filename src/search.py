@@ -24,7 +24,7 @@ class Searcher():
         self.dataset = SiftDataset('../data/datasets' / Path(self.collection_name), self.collection_name, with_base=False)
         self.attributes = attributes
 
-    def do_search(self, search_vector_id, upper_bound: int, limit: int = 100):
+    def do_search(self, search_vector_id, upper_bound: int = None, limit: int = 100):
         if self.partitioner:
             partitions = list(self.partitioner.get_query_partitions(low=None, high=upper_bound))
         else:
@@ -37,7 +37,6 @@ class Searcher():
                 data=[self.dataset.query[search_vector_id,:]],
                 limit=limit,
                 output_fields=["id"],
-                partition_names=partitions
             )
         else:
             res = self.client.search(

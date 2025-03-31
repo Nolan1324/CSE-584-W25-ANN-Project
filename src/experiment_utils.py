@@ -66,10 +66,11 @@ def configure_logging(name: str) -> tuple[logging.Logger, Path]:
 
 def setup_db(logger: logging.Logger, config: dict) -> tuple[RangePartitioner, np.ndarray]:
     dataset = SiftDataset(DATASET_PATH / "datasets" / config["dataset"], config["dataset"])
-    attributes = uniform_attributes(dataset.num_base_vecs, 1, config["seed"], int, 0, 1000).flatten()
+    key_max = config["key_max"]
+    attributes = uniform_attributes(dataset.num_base_vecs, 1, config["seed"], int, 0, key_max).flatten()
     
     step = 1000 // config["n_partitions"]
-    partitions = [(round(i), round(i + step - 1)) for i in np.linspace(0, 1000, config["n_partitions"], endpoint=False)]
+    partitions = [(round(i), round(i + step - 1)) for i in np.linspace(0, key_max, config["n_partitions"], endpoint=False)]
     if (config["partitioner"] == "range"):
         partitioner = RangePartitioner(partitions)
     else:
