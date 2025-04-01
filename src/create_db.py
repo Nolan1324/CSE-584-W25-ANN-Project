@@ -19,7 +19,7 @@ class Creator():
         if partitioner is not None and num_auto_partitions is not None:
             raise ValueError('Cannot specify both custom partitioner and auto partitioner at the same time')
 
-    def create_collection_schema(self, name, index_type: str = 'HNSW'):
+    def create_collection_schema(self, name):
         if self.client.has_collection(name):
             self.client.drop_collection(name)
 
@@ -53,25 +53,8 @@ class Creator():
         if self.partitioner is not None:
             self.partitioner.add_partitions_to_collection(self.client, name)
 
-        index_params = MilvusClient.prepare_index_params()
 
-        index_params.add_index(
-            field_name="vector",
-            metric_type="L2",
-            index_type=index_type,
-            index_name="vector_index",
-        )
-
-        self.client.create_index(
-            collection_name=name,
-            index_params=index_params,
-            sync=True
-        )
-
-        self.client.load_collection(name)
-
-
-    def populate_collection(self, name: str, dataset: SiftDataset, attributes: 'np.ndarray[np.int32]'):
+    def populate_collection(self, name: str, dataset: SiftDataset, attributes: 'np.ndarray[np.int32]', index_type: str = 'HNSW'):
         assert(dataset.num_base_vecs == attributes.shape[0])
         
         if self.partitioner is None:
@@ -104,6 +87,23 @@ class Creator():
                 if batch:
                     _insert_batch(partition_name, batch)
                     batch.clear()
+
+        index_params = MilvusClient.prepare_index_params()
+
+        index_params.add_index(
+            field_name="vector",
+            metric_type="L2",
+            index_type=index_type,
+            index_name="vector_index",
+        )
+
+        self.client.create_index(
+            collection_name=name,
+            index_params=index_params,
+            sync=True
+        )
+
+        self.client.load_collection(name)
 
         self.client.flush(name)
 

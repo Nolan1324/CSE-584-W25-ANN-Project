@@ -78,9 +78,9 @@ def setup_db(logger: logging.Logger, config: dict) -> tuple[RangePartitioner, np
     logger.info(f"Partitions ({len(partitions)}): {partitions}")
     
     creator = Creator(partitioner)
-    creator.create_collection_schema(config["dataset"], index_type=config["vector_index"])
+    creator.create_collection_schema(config["dataset"])
     logger.info("Collection schema created.")
-    creator.populate_collection(config["dataset"], dataset, attributes)
+    creator.populate_collection(config["dataset"], dataset, attributes, index_type=config["vector_index"])
     logger.info("Collection created.")
     
     return partitioner, attributes
@@ -121,7 +121,7 @@ def run_test(config: dict) -> None:
         logger.exception(e)
         logger.info("Test failed.")
         
-    logger.info("Cleaning up docker container...")
-    run_docker_command("stop")
-    run_docker_command("delete")
-    logger.info("Docker container stopped and deleted.")
+    # logger.info("Cleaning up docker container...")
+    # run_docker_command("stop")
+    # run_docker_command("delete")
+    # logger.info("Docker container stopped and deleted.")
