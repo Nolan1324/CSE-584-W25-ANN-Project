@@ -121,7 +121,7 @@ def run_test(config: dict) -> None:
         logger.exception(e)
         logger.info("Test failed.")
         
-    # logger.info("Cleaning up docker container...")
-    # run_docker_command("stop")
-    # run_docker_command("delete")
-    # logger.info("Docker container stopped and deleted.")
+    logger.info("Cleaning up docker container...")
+    run_docker_command("stop")
+    run_docker_command("delete")
+    logger.info("Docker container stopped and deleted.")
