@@ -178,4 +178,4 @@ data/datasets
 !download_data.sh
 bin/
 !standalone_embed.sh
-data/experiments/temp*
+data/experiments
