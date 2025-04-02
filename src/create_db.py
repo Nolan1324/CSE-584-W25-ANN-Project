@@ -1,20 +1,20 @@
-from pathlib import Path
 from typing import List, Optional
 import numpy as np
 from pymilvus import CollectionSchema, DataType, FieldSchema, MilvusClient
-import time
 from tqdm import tqdm
 
-from sift import SiftDataset
+from sift import Dataset, load_sift_1m
 from client import get_client
 from partitioner import Partitioner, RangePartitioner
 from attributes import uniform_attributes, uniform_attributes_example
 
+
 class Creator():
-    def __init__(self, partitioner: Optional[Partitioner] = None, num_auto_partitions: Optional[int] = None):
+    def __init__(self, partitioner: Optional[Partitioner] = None, num_auto_partitions: Optional[int] = None, datatype: DataType = DataType.FLOAT_VECTOR):
         self.client = get_client()
         self.partitioner = partitioner
         self.num_auto_partitions = num_auto_partitions
+        self.datatype = datatype
 
         if partitioner is not None and num_auto_partitions is not None:
             raise ValueError('Cannot specify both custom partitioner and auto partitioner at the same time')
@@ -35,7 +35,7 @@ class Creator():
         )
         vector_schema = FieldSchema(
             name="vector",
-            dtype=DataType.FLOAT_VECTOR,
+            dtype=self.datatype,
             dim=128,
         )
         schema = CollectionSchema(
@@ -54,8 +54,9 @@ class Creator():
             self.partitioner.add_partitions_to_collection(self.client, name)
 
 
-    def populate_collection(self, name: str, dataset: SiftDataset, attributes: 'np.ndarray[np.int32]', index_type: str = 'HNSW'):
+    def populate_collection(self, name: str, dataset: Dataset, attributes: 'np.ndarray[np.int32]', index_type: str = 'HNSW'):
         assert(dataset.num_base_vecs == attributes.shape[0])
+        assert(dataset.d == 128)
         
         if self.partitioner is None:
             CHUNK_SIZE = 10000
@@ -67,11 +68,17 @@ class Creator():
                         for offset, vector in enumerate(iter(dataset.base[i:i+CHUNK_SIZE]))]
                 res = self.client.insert(collection_name=name, data=data)
         else:
-            CHUNK_SIZE = 10000
+            CHUNK_SIZE = 10_000
 
             def _insert_batch(partition_name: str, batch: List[int]):
-                data = [{'id': index, 'vector': list(dataset.base[index]), 'attribute': attributes[index]} 
-                            for index in batch]
+                data = [
+                    {
+                        'id': index,
+                        'vector': dataset.base[index],
+                        'attribute': attributes[index],
+                    }
+                    for index in batch
+                ]
                 res = self.client.insert(collection_name=name, data=data, partition_name=partition_name)
 
             partition_batches = {partition_name: [] for partition_name in self.partitioner.partition_names}
@@ -104,15 +111,14 @@ class Creator():
         )
 
         self.client.load_collection(name)
-
         self.client.flush(name)
+        self.client.load_partitions(name, self.partitioner.partition_names)
+        
 
 if __name__ == '__main__':
-    # creator = Creator()
-    # creator = Creator(num_auto_partitions=16)
     creator = Creator(RangePartitioner([(0, 100), (101, 1000)]))
     
     name = 'sift'
-    dataset = SiftDataset('../data' / Path(name), name)
+    dataset = load_sift_1m('../data/sift')
     creator.create_collection_schema(name)
     creator.populate_collection(name, dataset, uniform_attributes_example(dataset.num_base_vecs))

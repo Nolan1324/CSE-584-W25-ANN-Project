@@ -9,7 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from dotenv import load_dotenv
 
-from sift import SiftDataset
+from sift import Dataset, load_sift_1b, load_sift_1m, load_sift_small
 from create_db import Creator
 from partitioner import RangePartitioner, ModPartitioner
 from attributes import uniform_attributes
@@ -19,13 +19,22 @@ plt.style.use("ggplot")
 
 
 ROOT_PATH = Path(__file__).parent.parent.resolve()
-DATASET_PATH = ROOT_PATH / "data"
-EXPERIMENT_PATH = DATASET_PATH / "experiments"
+DATASET_PATH = ROOT_PATH / "data" / "datasets"
+EXPERIMENT_PATH = ROOT_PATH / "data" / "experiments"
 BIN_PATH = ROOT_PATH / "bin"
 CONFIG_PATH = ROOT_PATH / "config"
 
 os.chdir(BIN_PATH)
 load_dotenv(CONFIG_PATH / ".env")
+
+
+def load_dataset(config: dict, base: bool) -> Dataset:
+    if config["dataset"] == "sift_1b":
+        return load_sift_1b(DATASET_PATH / "sift1b", config["dataset_size"], base=base)
+    elif config["dataset"] == "sift":
+        return load_sift_1m(DATASET_PATH / "sift", base=base)
+    elif config["dataset"] == "siftsmall":
+        return load_sift_small(DATASET_PATH / "siftsmall", base=base)
 
 
 def run_docker_command(command: str, ignore_errors: bool = False) -> None:
@@ -65,7 +74,9 @@ def configure_logging(name: str) -> tuple[logging.Logger, Path]:
 
 
 def setup_db(logger: logging.Logger, config: dict) -> tuple[RangePartitioner, np.ndarray]:
-    dataset = SiftDataset(DATASET_PATH / "datasets" / config["dataset"], config["dataset"])
+    dataset = load_dataset(config, base=True)
+    logger.info(f"Loaded dataset: {dataset}")
+    
     key_max = config["key_max"]
     attributes = uniform_attributes(dataset.num_base_vecs, 1, config["seed"], int, 0, key_max).flatten()
     
@@ -77,7 +88,7 @@ def setup_db(logger: logging.Logger, config: dict) -> tuple[RangePartitioner, np
         partitioner = ModPartitioner(config["n_partitions"])
     logger.info(f"Partitions ({len(partitions)}): {partitions}")
     
-    creator = Creator(partitioner)
+    creator = Creator(partitioner, datatype=dataset.datatype)
     creator.create_collection_schema(config["dataset"])
     logger.info("Collection schema created.")
     creator.populate_collection(config["dataset"], dataset, attributes, index_type=config["vector_index"])
@@ -86,7 +97,7 @@ def setup_db(logger: logging.Logger, config: dict) -> tuple[RangePartitioner, np
     return partitioner, attributes
 
 
-def run_test(config: dict) -> None:
+def run_test(config: dict) -> bool:
     plt.close("all")
     
     logger, experiment_dir = configure_logging(config["name"])
@@ -111,6 +122,7 @@ def run_test(config: dict) -> None:
     logger.info("Docker container started.")
     logger.info("Dashboard: http://127.0.0.1:9091/webui/")
 
+    success = True
     try:
         results = config["test_function"](logger, config, experiment_dir)
         logger.info("Test succeeded.")
@@ -120,8 +132,10 @@ def run_test(config: dict) -> None:
     except Exception as e:
         logger.exception(e)
         logger.info("Test failed.")
+        success = False
         
     logger.info("Cleaning up docker container...")
     run_docker_command("stop")
     run_docker_command("delete")
     logger.info("Docker container stopped and deleted.")
+    return success

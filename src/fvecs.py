@@ -8,12 +8,13 @@ Taken from
 """
 
 import os
+from pathlib import Path
 
 import numpy as np
 import numpy.typing as npt
 
 
-__all__ = ["ivecs_read", "fvecs_read", "bvecs_read"]
+__all__ = ["ivecs_read", "fvecs_read", "bvecs_read", "vecs_read"]
 
 
 def ivecs_read(path: os.PathLike) -> npt.NDArray[np.int32]:
@@ -41,3 +42,15 @@ def bvecs_read(path: os.PathLike, n: int = None) -> npt.NDArray[np.uint8]:
     else:
         x = np.fromfile(path, dtype=np.uint8, count=n * (d + 4))
     return x.reshape(-1, d + 4)[:, 4:].copy()
+
+
+def vecs_read(path: os.PathLike, n: int = None) -> npt.NDArray[np.float32] | npt.NDArray[np.int32] | npt.NDArray[np.uint8]:
+    extension = Path(path).suffix
+    if extension == ".fvecs":
+        return fvecs_read(path)
+    elif extension == ".ivecs":
+        return ivecs_read(path)
+    elif extension == ".bvecs":
+        return bvecs_read(path, n=n)
+    else:
+        raise ValueError(f"Unsupported file format: {extension}")

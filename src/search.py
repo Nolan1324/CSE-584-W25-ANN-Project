@@ -1,14 +1,13 @@
-from pathlib import Path
 from typing import List, Optional
 import numpy as np
-from pymilvus import MilvusClient
 from dataclasses import dataclass
 import time
 
-from sift import SiftDataset
+from sift import Dataset, load_sift_1m
 from client import get_client
 from partitioner import Partitioner, RangePartitioner
 from attributes import uniform_attributes_example
+
 
 class Searcher():
     @dataclass
@@ -17,11 +16,11 @@ class Searcher():
         results: List[int]
         time: float
 
-    def __init__(self, collection_name: str, attributes: 'np.ndarray[np.int32]', partitioner: Optional[Partitioner] = None):
+    def __init__(self, collection_name: str, attributes: 'np.ndarray[np.int32]', dataset: Dataset, partitioner: Optional[Partitioner] = None):
         self.client = get_client()
         self.partitioner = partitioner
         self.collection_name = collection_name
-        self.dataset = SiftDataset('../data/datasets' / Path(self.collection_name), self.collection_name, with_base=False)
+        self.dataset = dataset
         self.attributes = attributes
 
     def do_search(self, search_vector_id, upper_bound: int = None, limit: int = 100):
@@ -64,5 +63,6 @@ class Searcher():
 if __name__ == '__main__':
     partitioner = RangePartitioner([(0, 100), (101, 1000)])
     # searcher = Searcher()
+    dataset = load_sift_1m("data/datasets/sift1m", base=False)
     searcher = Searcher('sift', uniform_attributes_example(1000000), partitioner)
     searcher.do_search(0, upper_bound=100)

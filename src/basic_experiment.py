@@ -1,6 +1,7 @@
 import logging
 import random
 import json
+import time
 from pathlib import Path
 from itertools import product
 from typing import Iterable, List
@@ -9,7 +10,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
-from experiment_utils import run_test, setup_db
+from experiment_utils import run_test, setup_db, load_dataset
+from sift import load_sift_1b
 from utils import Timer
 from search import Searcher
 
@@ -27,14 +29,18 @@ def confusion(ground_truth: Iterable[int], results: Iterable[int]):
 def test(logger: logging.Logger, config: dict, experiment_dir: Path) -> dict:
     partitioner, attributes = setup_db(logger, config)
     
+    logger.info("Waiting...")
+    time.sleep(5)
     logger.info("Running search...")
-    searcher = Searcher(config["dataset"], attributes, partitioner)
+    dataset = load_dataset(config, base=False)
+    logger.info(f"Loaded query dataset: {dataset}")
+    searcher = Searcher(config["dataset"], attributes, dataset, partitioner)
     times = []
     filter_used_list = []
     tp_list = []
     fp_list = []
     fn_list = []
-
+    
     query_indices = np.arange(searcher.dataset.query.shape[0])
     for index in tqdm(query_indices):
         with Timer() as timer:
@@ -70,25 +76,34 @@ def test(logger: logging.Logger, config: dict, experiment_dir: Path) -> dict:
 
 
 if __name__ == "__main__":
+    kill_on_fail = True
     trials = 3
     experiment_grid = {
-        "vector_index": ["HNSW", "FLAT", "IVF_FLAT"],
-        "n_partitions": [5, 10, 20],
-        "dataset": ["sift"],
-        "name": ["basic_experiment"],
+        "vector_index": ["HNSW", "IVF_SQ8"],
+        "n_partitions": [1],
+        "dataset": ["sift_1b"],
+        "dataset_size": [2],
+        "name": ["control"],
         "test_function": [test],
-        "selectivity": [0.1],
-        "filter_percentage": [0.25],
-        "partitioner": ["mod"]
+        "selectivity": [1],
+        "filter_percentage": [0],
+        "key_max": [1_000],
+        "partitioner": ["mod", "range"],
+        "trial": list(range(trials)),
     }
+    experiment_configs = [
+        dict(zip(experiment_grid.keys(), values))
+        for values in product(*experiment_grid.values())
+    ]
+    experiment_configs = experiment_configs[:1]
     
-    for config in (dict(zip(experiment_grid.keys(), values)) for values in product(*experiment_grid.values())):
-        for t in range(trials):
-            config["key_max"] = 1000
-            config["seed"] = random.randint(0, 1_000_000)
-            config["trial"] = t
-            test = config["test_function"]
-            config["test_function"] = test.__name__
-            print(f"Running experiment with config: {json.dumps(config, indent=4)}")
-            config["test_function"] = test
-            run_test(config)
+    for i, config in enumerate(experiment_configs):
+        config["seed"] = random.randint(0, 1_000_000)
+        test = config["test_function"]
+        config["test_function"] = test.__name__
+        print(f"Running experiment {i+1}/{len(experiment_configs)} with config: {json.dumps(config, indent=4)}")
+        config["test_function"] = test
+        success = run_test(config)
+        if kill_on_fail and not success:
+            print(f"Experiment {i+1} failed. Killed future experiments.")
+    print("All experiments completed.")
