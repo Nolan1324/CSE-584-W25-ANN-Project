@@ -1,3 +1,6 @@
 dataCoord:
   segment:
-    maxSize: 25600
+    maxSize: 2560000
+queryNode:
+  cache:
+    warmup: disable

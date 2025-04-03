@@ -60,7 +60,7 @@ def configure_logging(name: str) -> tuple[logging.Logger, Path]:
     logger.handlers.clear()
     logger.setLevel(logging.DEBUG)
 
-    formatter = logging.Formatter("{asctime} | {name} | {levelname:<8} | {message}", style="{")
+    formatter = logging.Formatter("{asctime} | {name:<20} | {levelname:<8} | {message}", style="{")
 
     file_handler = logging.FileHandler(experiment_dir / f"{name}.log", mode="w")
     file_handler.setFormatter(formatter)
@@ -88,7 +88,7 @@ def setup_db(logger: logging.Logger, config: dict) -> tuple[RangePartitioner, np
         partitioner = ModPartitioner(config["n_partitions"])
     logger.info(f"Partitions ({len(partitions)}): {partitions}")
     
-    creator = Creator(partitioner, datatype=dataset.datatype)
+    creator = Creator(partitioner, datatype=dataset.datatype, logger=logger)
     creator.create_collection_schema(config["dataset"])
     logger.info("Collection schema created.")
     creator.populate_collection(config["dataset"], dataset, attributes, index_type=config["vector_index"])

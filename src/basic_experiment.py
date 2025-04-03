@@ -42,6 +42,7 @@ def test(logger: logging.Logger, config: dict, experiment_dir: Path) -> dict:
     fn_list = []
     
     query_indices = np.arange(searcher.dataset.query.shape[0])
+    np.random.shuffle(query_indices)
     for index in tqdm(query_indices):
         with Timer() as timer:
             filter_used = random.random() <= config["filter_percentage"]
@@ -54,7 +55,7 @@ def test(logger: logging.Logger, config: dict, experiment_dir: Path) -> dict:
             tp_list.append(tp)
             fp_list.append(fp)
             fn_list.append(fn)
-        times.append(timer.duration)
+        times.append(search_results.time)
     logger.info("Search complete.")
     
     stats = {
@@ -79,17 +80,17 @@ if __name__ == "__main__":
     kill_on_fail = True
     trials = 3
     experiment_grid = {
-        "vector_index": ["HNSW", "IVF_SQ8"],
+        "vector_index": ["HNSW"],
         "n_partitions": [1],
-        "dataset": ["sift_1b"],
+        "dataset": ["sift"],
         "dataset_size": [2],
-        "name": ["control"],
         "test_function": [test],
         "selectivity": [1],
         "filter_percentage": [0],
         "key_max": [1_000],
         "partitioner": ["mod", "range"],
         "trial": list(range(trials)),
+        "name": ["control_sift_hnsw"],
     }
     experiment_configs = [
         dict(zip(experiment_grid.keys(), values))

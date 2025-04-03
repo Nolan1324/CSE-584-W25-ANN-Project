@@ -29,7 +29,7 @@ class Searcher():
         else:
             partitions = None
 
-        start_time = time.time()
+        start_time = time.monotonic()
         if upper_bound is None:
             res = self.client.search(
                 collection_name=self.collection_name,
@@ -46,7 +46,7 @@ class Searcher():
                 filter=f"attribute <= {upper_bound}",
                 partition_names=partitions
             )
-        end_time = time.time()
+        end_time = time.monotonic()
         
         if upper_bound is None:
             return self.SearchResults(

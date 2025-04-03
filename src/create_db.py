@@ -1,4 +1,6 @@
 from typing import List, Optional
+from logging import Logger
+
 import numpy as np
 from pymilvus import CollectionSchema, DataType, FieldSchema, MilvusClient
 from tqdm import tqdm
@@ -7,14 +9,16 @@ from sift import Dataset, load_sift_1m
 from client import get_client
 from partitioner import Partitioner, RangePartitioner
 from attributes import uniform_attributes, uniform_attributes_example
+from utils import Timer
 
 
 class Creator():
-    def __init__(self, partitioner: Optional[Partitioner] = None, num_auto_partitions: Optional[int] = None, datatype: DataType = DataType.FLOAT_VECTOR):
+    def __init__(self, partitioner: Optional[Partitioner] = None, num_auto_partitions: Optional[int] = None, datatype: DataType = DataType.FLOAT_VECTOR, logger: Logger = None):
         self.client = get_client()
         self.partitioner = partitioner
         self.num_auto_partitions = num_auto_partitions
         self.datatype = datatype
+        self.logger: Logger = logger.getChild('Creator') if logger else None
 
         if partitioner is not None and num_auto_partitions is not None:
             raise ValueError('Cannot specify both custom partitioner and auto partitioner at the same time')
@@ -97,22 +101,40 @@ class Creator():
 
         index_params = MilvusClient.prepare_index_params()
 
-        index_params.add_index(
-            field_name="vector",
-            metric_type="L2",
-            index_type=index_type,
-            index_name="vector_index",
-        )
+        self.logger.info(f'Adding index {index_type} for {name}')
+        with Timer() as t:
+            index_params.add_index(
+                field_name="vector",
+                metric_type="L2",
+                index_type=index_type,
+                index_name="vector_index",
+            )
+        self.logger.info(f'Index {index_type} added in {t.duration:.2f}s')
 
-        self.client.create_index(
-            collection_name=name,
-            index_params=index_params,
-            sync=True
-        )
+        self.logger.info(f'Creating index {index_type} for {name}')
+        with Timer() as t:
+            self.client.create_index(
+                collection_name=name,
+                index_params=index_params,
+                sync=True
+            )
+        self.logger.info(f'Index {index_type} created in {t.duration:.2f}s')
 
-        self.client.load_collection(name)
-        self.client.flush(name)
-        self.client.load_partitions(name, self.partitioner.partition_names)
+        self.logger.info(f'Loading {name}')
+        with Timer() as t:
+            self.client.load_collection(name)
+        self.logger.info(f'Loaded {name} in {t.duration:.2f}s')
+        
+        self.logger.info(f'Flushing {name}')
+        with Timer() as t:
+            self.client.flush(name)
+        self.logger.info(f'Flushed {name} in {t.duration:.2f}s')
+        
+        if self.partitioner is not None:
+            for partition_name in self.partitioner.partition_names:
+                is_loaded = self.client.get_load_state(name, partition_name)
+                self.logger.debug(f'Partition {partition_name}: {is_loaded["state"]}')
+        # self.client.load_partitions(name, self.partitioner.partition_names)
         
 
 if __name__ == '__main__':
