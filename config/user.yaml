@@ -4,3 +4,5 @@ dataCoord:
 queryNode:
   cache:
     warmup: disable
+log:
+  level: debug

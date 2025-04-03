@@ -82,7 +82,7 @@ if __name__ == "__main__":
     experiment_grid = {
         "vector_index": ["HNSW"],
         "n_partitions": [1],
-        "dataset": ["sift"],
+        "dataset": ["sift_1b"],
         "dataset_size": [2],
         "test_function": [test],
         "selectivity": [1],
@@ -90,7 +90,7 @@ if __name__ == "__main__":
         "key_max": [1_000],
         "partitioner": ["mod", "range"],
         "trial": list(range(trials)),
-        "name": ["control_sift_hnsw"],
+        "name": ["new_test"],
     }
     experiment_configs = [
         dict(zip(experiment_grid.keys(), values))

@@ -1,8 +1,10 @@
+import time
 from typing import List, Optional
 from logging import Logger
 
 import numpy as np
 from pymilvus import CollectionSchema, DataType, FieldSchema, MilvusClient
+from pymilvus import utility
 from tqdm import tqdm
 
 from sift import Dataset, load_sift_1m
@@ -98,6 +100,11 @@ class Creator():
                 if batch:
                     _insert_batch(partition_name, batch)
                     batch.clear()
+        
+        self.logger.info(f'Flushing {name}')
+        with Timer() as t:
+            self.client.flush(name)
+        self.logger.info(f'Flushed {name} in {t.duration:.2f}s')
 
         index_params = MilvusClient.prepare_index_params()
 
@@ -119,6 +126,25 @@ class Creator():
                 sync=True
             )
         self.logger.info(f'Index {index_type} created in {t.duration:.2f}s')
+        
+        # self.logger.info(f'Waiting for index building to complete for {name}')
+        # utility.wait_for_index_building_complete(
+        #     collection_name=name,
+        #     index_name="vector_index",
+        # )
+        
+        # def wait_index():
+        #     while True:
+        #         index_state = utility.index_building_progress(
+        #             collection_name=name,
+        #             index_name="vector_index",
+        #         )
+        #         if index_state.get("pending_index_rows", -1) == 0:
+        #             break
+        #         self.logger.info(f'Waiting for index building to complete: {index_state}')
+        #         time.sleep(2)
+
+        # wait_index()
 
         self.logger.info(f'Loading {name}')
         with Timer() as t:
