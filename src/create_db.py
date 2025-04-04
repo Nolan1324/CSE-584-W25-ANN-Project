@@ -10,7 +10,7 @@ from tqdm import tqdm
 from sift import Dataset, load_sift_1m
 from client import get_client
 from partitioner import Partitioner, RangePartitioner
-from attributes import uniform_attributes, uniform_attributes_example
+from attributes import uniform_attributes, uniform_attributes_basic
 from utils import Timer
 
 
@@ -169,4 +169,4 @@ if __name__ == '__main__':
     name = 'sift'
     dataset = load_sift_1m('../data/sift')
     creator.create_collection_schema(name)
-    creator.populate_collection(name, dataset, uniform_attributes_example(dataset.num_base_vecs))
+    creator.populate_collection(name, dataset, uniform_attributes_basic(dataset.num_base_vecs))
