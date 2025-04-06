@@ -13,6 +13,8 @@ from partitioner import Partitioner, RangePartitioner
 from attributes import uniform_attributes, uniform_attributes_basic
 from utils import Timer
 
+import logging
+
 
 class Creator():
     def __init__(self, partitioner: Optional[Partitioner] = None, num_auto_partitions: Optional[int] = None, datatype: DataType = DataType.FLOAT_VECTOR, logger: Logger = None):
@@ -20,7 +22,7 @@ class Creator():
         self.partitioner = partitioner
         self.num_auto_partitions = num_auto_partitions
         self.datatype = datatype
-        self.logger: Logger = logger.getChild('Creator') if logger else None
+        self.logger: Logger = logger.getChild('Creator') if logger else logging.getLogger('null')
 
         if partitioner is not None and num_auto_partitions is not None:
             raise ValueError('Cannot specify both custom partitioner and auto partitioner at the same time')
@@ -37,7 +39,8 @@ class Creator():
         attrib_schema = FieldSchema(
             name="attribute",
             dtype=DataType.INT64,
-            is_partition_key=self.num_auto_partitions is not None
+            is_partition_key=self.num_auto_partitions is not None,
+            is_clustering_key=True,
         )
         vector_schema = FieldSchema(
             name="vector",
@@ -161,12 +164,21 @@ class Creator():
                 is_loaded = self.client.get_load_state(name, partition_name)
                 self.logger.debug(f'Partition {partition_name}: {is_loaded["state"]}')
         # self.client.load_partitions(name, self.partitioner.partition_names)
-        
+    
+    def cluster_compact(self, name):
+        job = self.client.compact(name, is_clustering=True)
+        while self.client.get_compaction_state(job) != 'Completed':
+            time.sleep(5.0)
 
 if __name__ == '__main__':
-    creator = Creator(RangePartitioner([(0, 100), (101, 1000)]))
+    # creator = Creator(RangePartitioner([(0, 100), (101, 1000)]))
+    creator = Creator()
     
     name = 'sift'
-    dataset = load_sift_1m('../data/sift')
+    dataset = load_sift_1m('../data/datasets/sift', True)
+    print('Creating schema')
     creator.create_collection_schema(name)
+    print('Populating collection')
     creator.populate_collection(name, dataset, uniform_attributes_basic(dataset.num_base_vecs))
+    # print('Cluster compaction')
+    # creator.cluster_compact(name)
