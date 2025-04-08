@@ -1,0 +1,162 @@
+{
+    "kill_on_fail": false,
+    "trials": 3,
+    "schemas": {
+        "index": [
+            "HNSW",
+            "IVF_FLAT"
+        ],
+        "partitioner": [
+            "mod",
+            "range"
+        ],
+        "n_partitions": [
+            5,
+            10,
+            100
+        ]
+    },
+    "workflows": {
+        "selectivity": [
+            0.01,
+            0.1,
+            0.5,
+            0.9
+        ],
+        "filter_percentage": [
+            0.1,
+            0.5,
+            0.9
+        ],
+        "k": 1000
+    },
+    "dataset": {
+        "name": "sift_1b",
+        "size": 5,
+        "max_attribute": 1000
+    },
+    "expanded_schemas": [
+        {
+            "index": "HNSW",
+            "partitioner": "mod",
+            "n_partitions": 5
+        },
+        {
+            "index": "HNSW",
+            "partitioner": "mod",
+            "n_partitions": 10
+        },
+        {
+            "index": "HNSW",
+            "partitioner": "mod",
+            "n_partitions": 100
+        },
+        {
+            "index": "HNSW",
+            "partitioner": "range",
+            "n_partitions": 5
+        },
+        {
+            "index": "HNSW",
+            "partitioner": "range",
+            "n_partitions": 10
+        },
+        {
+            "index": "HNSW",
+            "partitioner": "range",
+            "n_partitions": 100
+        },
+        {
+            "index": "IVF_FLAT",
+            "partitioner": "mod",
+            "n_partitions": 5
+        },
+        {
+            "index": "IVF_FLAT",
+            "partitioner": "mod",
+            "n_partitions": 10
+        },
+        {
+            "index": "IVF_FLAT",
+            "partitioner": "mod",
+            "n_partitions": 100
+        },
+        {
+            "index": "IVF_FLAT",
+            "partitioner": "range",
+            "n_partitions": 5
+        },
+        {
+            "index": "IVF_FLAT",
+            "partitioner": "range",
+            "n_partitions": 10
+        },
+        {
+            "index": "IVF_FLAT",
+            "partitioner": "range",
+            "n_partitions": 100
+        }
+    ],
+    "expanded_workflows": [
+        {
+            "selectivity": 0.01,
+            "filter_percentage": 0.1,
+            "k": 1000
+        },
+        {
+            "selectivity": 0.01,
+            "filter_percentage": 0.5,
+            "k": 1000
+        },
+        {
+            "selectivity": 0.01,
+            "filter_percentage": 0.9,
+            "k": 1000
+        },
+        {
+            "selectivity": 0.1,
+            "filter_percentage": 0.1,
+            "k": 1000
+        },
+        {
+            "selectivity": 0.1,
+            "filter_percentage": 0.5,
+            "k": 1000
+        },
+        {
+            "selectivity": 0.1,
+            "filter_percentage": 0.9,
+            "k": 1000
+        },
+        {
+            "selectivity": 0.5,
+            "filter_percentage": 0.1,
+            "k": 1000
+        },
+        {
+            "selectivity": 0.5,
+            "filter_percentage": 0.5,
+            "k": 1000
+        },
+        {
+            "selectivity": 0.5,
+            "filter_percentage": 0.9,
+            "k": 1000
+        },
+        {
+            "selectivity": 0.9,
+            "filter_percentage": 0.1,
+            "k": 1000
+        },
+        {
+            "selectivity": 0.9,
+            "filter_percentage": 0.5,
+            "k": 1000
+        },
+        {
+            "selectivity": 0.9,
+            "filter_percentage": 0.9,
+            "k": 1000
+        }
+    ]
+}

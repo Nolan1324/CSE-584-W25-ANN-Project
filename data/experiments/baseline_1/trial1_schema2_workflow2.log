@@ -1,0 +1,4 @@
+2025-04-04 05:10:07,041 | trial1_schema2_workflow2 | INFO     | Logging to /home/evangebo/Repositories/cse584/data/experiments/baseline (2025-04-04 00:28:21)/trial1_schema2_workflow2.log
+2025-04-04 05:10:07,041 | trial1_schema2_workflow2 | INFO     | Running search...
+2025-04-04 05:10:07,056 | trial1_schema2_workflow2 | INFO     | Loaded query dataset: Dataset(name="sift", num_base_vecs=0, num_query_vecs=10,000, d=128, datatype=FLOAT32)
+2025-04-04 05:11:31,877 | trial1_schema2_workflow2 | INFO     | Search complete.
