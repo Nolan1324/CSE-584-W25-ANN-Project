@@ -50,6 +50,9 @@ class RangePartitioner(Partitioner):
     def partition_names(self):
         return self._partition_names
     
+    def __str__(self):
+        return str(self.partition_ranges)
+    
 
 class ModPartitioner(Partitioner):
     def __init__(self, num_partitions: int):
