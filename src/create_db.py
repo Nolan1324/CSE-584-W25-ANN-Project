@@ -25,7 +25,7 @@ class Creator():
         if partitioner is not None and num_auto_partitions is not None:
             raise ValueError('Cannot specify both custom partitioner and auto partitioner at the same time')
 
-    def create_collection_schema(self, name):
+    def create_collection_schema(self, name: str = "data"):
         if self.client.has_collection(name):
             self.client.drop_collection(name)
 
@@ -60,9 +60,8 @@ class Creator():
             self.partitioner.add_partitions_to_collection(self.client, name)
 
 
-    def populate_collection(self, name: str, dataset: Dataset, attributes: 'np.ndarray[np.int32]', index_type: str = 'HNSW'):
+    def populate_collection(self, dataset: Dataset, attributes: 'np.ndarray[np.int32]', index_type: str = 'HNSW', name: str = "data"):
         assert(dataset.num_base_vecs == attributes.shape[0])
-        assert(dataset.d == 128)
         
         if self.partitioner is None:
             CHUNK_SIZE = 10000
@@ -101,66 +100,31 @@ class Creator():
                     _insert_batch(partition_name, batch)
                     batch.clear()
         
-        self.logger.info(f'Flushing {name}')
-        with Timer() as t:
+        with Timer(self.logger, "flush"):
             self.client.flush(name)
-        self.logger.info(f'Flushed {name} in {t.duration:.2f}s')
 
-        index_params = MilvusClient.prepare_index_params()
-
-        self.logger.info(f'Adding index {index_type} for {name}')
-        with Timer() as t:
+        with Timer(self.logger, "indexing"):
+            index_params = MilvusClient.prepare_index_params()
             index_params.add_index(
                 field_name="vector",
                 metric_type="L2",
                 index_type=index_type,
                 index_name="vector_index",
             )
-        self.logger.info(f'Index {index_type} added in {t.duration:.2f}s')
-
-        self.logger.info(f'Creating index {index_type} for {name}')
-        with Timer() as t:
             self.client.create_index(
                 collection_name=name,
                 index_params=index_params,
                 sync=True
             )
-        self.logger.info(f'Index {index_type} created in {t.duration:.2f}s')
-        
-        # self.logger.info(f'Waiting for index building to complete for {name}')
-        # utility.wait_for_index_building_complete(
-        #     collection_name=name,
-        #     index_name="vector_index",
-        # )
-        
-        # def wait_index():
-        #     while True:
-        #         index_state = utility.index_building_progress(
-        #             collection_name=name,
-        #             index_name="vector_index",
-        #         )
-        #         if index_state.get("pending_index_rows", -1) == 0:
-        #             break
-        #         self.logger.info(f'Waiting for index building to complete: {index_state}')
-        #         time.sleep(2)
 
-        # wait_index()
-
-        self.logger.info(f'Loading {name}')
-        with Timer() as t:
+        with Timer(self.logger, "loading"):
             self.client.load_collection(name)
-        self.logger.info(f'Loaded {name} in {t.duration:.2f}s')
         
-        self.logger.info(f'Flushing {name}')
-        with Timer() as t:
+        with Timer(self.logger, "flushing"):
             self.client.flush(name)
-        self.logger.info(f'Flushed {name} in {t.duration:.2f}s')
         
         if self.partitioner is not None:
-            for partition_name in self.partitioner.partition_names:
-                is_loaded = self.client.get_load_state(name, partition_name)
-                self.logger.debug(f'Partition {partition_name}: {is_loaded["state"]}')
-        # self.client.load_partitions(name, self.partitioner.partition_names)
+            self.logger.debug(f"Partition states: {[self.client.get_load_state(name, partition_name) for partition_name in self.partitioner.partition_names]}")
         
 
 if __name__ == '__main__':

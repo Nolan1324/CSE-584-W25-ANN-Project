@@ -4,36 +4,79 @@ import subprocess
 import os
 from pathlib import Path
 from datetime import datetime
+from contextlib import contextmanager
+from typing import Callable
 
 import numpy as np
-import matplotlib.pyplot as plt
-from dotenv import load_dotenv
 
 from sift import Dataset, load_sift_1b, load_sift_1m, load_sift_small
 from create_db import Creator
 from partitioner import RangePartitioner, ModPartitioner
-from attributes import uniform_attributes
+from utils import expand_experiment_grid, BIN_PATH, CONFIG_PATH, EXPERIMENT_PATH, DATASET_PATH
 
 
-plt.style.use("ggplot")
+@contextmanager
+def docker_container():
+    os.chdir(BIN_PATH)
+    run_docker_command("stop", True)
+    run_docker_command("delete", True)
+    run_docker_command("start")
+    run_docker_command("stop")
+    subprocess.run(
+        ["sudo", "cp", "-f", CONFIG_PATH / "user.yaml", BIN_PATH / "user.yaml"],
+        input=os.getenv("PASSWORD") + "\n",
+        capture_output=True,
+        text=True,
+    )
+    run_docker_command("start")
+    try:
+        yield
+    except Exception as e:
+        print("Interrupted")
+        raise e
+    finally:
+        print("Cleaning up...")
+        run_docker_command("stop")
+        run_docker_command("delete")
 
 
-ROOT_PATH = Path(__file__).parent.parent.resolve()
-DATASET_PATH = ROOT_PATH / "data" / "datasets"
-EXPERIMENT_PATH = ROOT_PATH / "data" / "experiments"
-BIN_PATH = ROOT_PATH / "bin"
-CONFIG_PATH = ROOT_PATH / "config"
-
-os.chdir(BIN_PATH)
-load_dotenv(CONFIG_PATH / ".env")
+def run_experiment(name: str, config: dict, experiment: Callable) -> None:
+    schemas = expand_experiment_grid(config["schemas"])
+    workflows = expand_experiment_grid(config["workflows"])
+    n_experiments = len(schemas) * len(workflows) * config["trials"]
+    
+    experiment_dir = EXPERIMENT_PATH / f"{name} ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})"
+    experiment_dir.mkdir()
+    
+    with open(experiment_dir / "config.json", "w") as config_file:
+        json.dump(config | {
+            "expanded_schemas": schemas,
+            "expanded_workflows": workflows,
+        }, config_file, indent=4)
+    
+    current_experiment = 0
+    for trial_i in range(config["trials"]):
+        for schema_i, schema in enumerate(schemas):
+            db_logger = configure_logging(experiment_dir, f"trial{trial_i}_schema{schema_i}_db")
+            with docker_container():
+                print(f"Configuring schema {schema_i + 1}/{len(schemas)} and trial {trial_i + 1}/{config['trials']}...")
+                partitioner, attributes = setup_db(db_logger, schema, config["dataset"])
+                for workflow_i, workflow in enumerate(workflows):
+                    current_experiment += 1
+                    print(f"Running workflow {workflow_i + 1}/{len(workflows)} (experiment {current_experiment}/{n_experiments})...")
+                    trial_name = f"trial{trial_i}_schema{schema_i}_workflow{workflow_i}"
+                    logger = configure_logging(experiment_dir, trial_name)
+                    results = experiment(logger, schema, workflow, config["dataset"], partitioner, attributes)
+                    with open(experiment_dir / f"{trial_name}.json", "w") as results_file:
+                        json.dump(results, results_file, indent=4)
 
 
 def load_dataset(config: dict, base: bool) -> Dataset:
-    if config["dataset"] == "sift_1b":
-        return load_sift_1b(DATASET_PATH / "sift1b", config["dataset_size"], base=base)
-    elif config["dataset"] == "sift":
+    if config["name"] == "sift_1b":
+        return load_sift_1b(DATASET_PATH / "sift1b", config["size"], base=base)
+    elif config["name"] == "sift":
         return load_sift_1m(DATASET_PATH / "sift", base=base)
-    elif config["dataset"] == "siftsmall":
+    elif config["name"] == "siftsmall":
         return load_sift_small(DATASET_PATH / "siftsmall", base=base)
 
 
@@ -49,11 +92,7 @@ def run_docker_command(command: str, ignore_errors: bool = False) -> None:
         raise RuntimeError(f"Failed to run command: {process.stdout}")
 
 
-def configure_logging(name: str) -> tuple[logging.Logger, Path]:
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    experiment_dir = EXPERIMENT_PATH / f"{name} ({timestamp})"
-    experiment_dir.mkdir()
-    
+def configure_logging(experiment_path: Path, name: str) -> logging.Logger:
     logger = logging.getLogger(name)
     for handler in logger.handlers[:]:
         logger.removeHandler(handler)
@@ -62,80 +101,34 @@ def configure_logging(name: str) -> tuple[logging.Logger, Path]:
 
     formatter = logging.Formatter("{asctime} | {name:<20} | {levelname:<8} | {message}", style="{")
 
-    file_handler = logging.FileHandler(experiment_dir / f"{name}.log", mode="w")
+    file_handler = logging.FileHandler(experiment_path / f"{name}.log", mode="w")
     file_handler.setFormatter(formatter)
 
     logger.addHandler(file_handler)
     logger.addHandler(logging.StreamHandler())
     
-    logger.info(f"Logging to {experiment_dir / f'{name}.log'}")
+    logger.info(f"Logging to {experiment_path / f'{name}.log'}")
 
-    return logger, experiment_dir
+    return logger
 
 
-def setup_db(logger: logging.Logger, config: dict) -> tuple[RangePartitioner, np.ndarray]:
-    dataset = load_dataset(config, base=True)
+def setup_db(logger: logging.Logger, schema_config: dict, dataset_config: dict) -> tuple[RangePartitioner, np.ndarray]:
+    dataset = load_dataset(dataset_config, base=True)
+    attributes = np.random.default_rng().uniform(0, dataset_config["max_attribute"], dataset.num_base_vecs).astype(int)
     logger.info(f"Loaded dataset: {dataset}")
     
-    key_max = config["key_max"]
-    attributes = uniform_attributes(dataset.num_base_vecs, 1, config["seed"], int, 0, key_max).flatten()
-    
-    step = 1000 // config["n_partitions"]
-    partitions = [(round(i), round(i + step - 1)) for i in np.linspace(0, key_max, config["n_partitions"], endpoint=False)]
-    if (config["partitioner"] == "range"):
+    if schema_config["partitioner"] == "range":
+        partitions = [
+            (round(i), round(i + dataset_config["max_attribute"] // schema_config["n_partitions"] - 1))
+            for i in np.linspace(0, dataset_config["max_attribute"], schema_config["n_partitions"], endpoint=False)
+        ]
         partitioner = RangePartitioner(partitions)
-    else:
-        partitioner = ModPartitioner(config["n_partitions"])
-    logger.info(f"Partitions ({len(partitions)}): {partitions}")
+        logger.info(f"Using range partitioner with partitions: {partitions}")
+    elif schema_config["partitioner"] == "mod":
+        partitioner = ModPartitioner(schema_config["n_partitions"])
     
     creator = Creator(partitioner, datatype=dataset.datatype, logger=logger)
-    creator.create_collection_schema(config["dataset"])
-    logger.info("Collection schema created.")
-    creator.populate_collection(config["dataset"], dataset, attributes, index_type=config["vector_index"])
-    logger.info("Collection created.")
+    creator.create_collection_schema()
+    creator.populate_collection(dataset, attributes, index_type=schema_config["index"])
     
     return partitioner, attributes
-
-
-def run_test(config: dict) -> bool:
-    plt.close("all")
-    
-    logger, experiment_dir = configure_logging(config["name"])
-    with open(experiment_dir / "config.json", "w") as config_file:
-        printable_test_config = config.copy()
-        printable_test_config["test_function"] = config["test_function"].__name__
-        json.dump(printable_test_config, config_file, indent=4)
-
-    logger.info("Starting docker container...")
-    run_docker_command("stop", True)
-    run_docker_command("delete", True)
-    run_docker_command("start")
-    run_docker_command("stop")
-    logger.info("Copying config files to docker container...")
-    subprocess.run(
-        ["sudo", "cp", "-f", CONFIG_PATH / "user.yaml", BIN_PATH / "user.yaml"],
-        input=os.getenv("PASSWORD") + "\n",
-        capture_output=True,
-        text=True,
-    )
-    run_docker_command("start")
-    logger.info("Docker container started.")
-    logger.info("Dashboard: http://127.0.0.1:9091/webui/")
-
-    success = True
-    try:
-        results = config["test_function"](logger, config, experiment_dir)
-        logger.info("Test succeeded.")
-        with open(experiment_dir / "results.json", "w") as results_file:
-            json.dump(results, results_file, indent=4)
-        logger.info("Test saved.")
-    except Exception as e:
-        logger.exception(e)
-        logger.info("Test failed.")
-        success = False
-        
-    logger.info("Cleaning up docker container...")
-    run_docker_command("stop")
-    run_docker_command("delete")
-    logger.info("Docker container stopped and deleted.")
-    return success

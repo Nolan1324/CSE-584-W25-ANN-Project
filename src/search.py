@@ -1,12 +1,12 @@
 from typing import List, Optional
 import numpy as np
 from dataclasses import dataclass
-import time
 
 from sift import Dataset, load_sift_1m
 from client import get_client
 from partitioner import Partitioner, RangePartitioner
 from attributes import uniform_attributes_example
+from utils import Timer
 
 
 class Searcher():
@@ -29,35 +29,34 @@ class Searcher():
         else:
             partitions = None
 
-        start_time = time.monotonic()
-        if upper_bound is None:
-            res = self.client.search(
-                collection_name=self.collection_name,
-                data=[self.dataset.query[search_vector_id,:]],
-                limit=limit,
-                output_fields=["id"],
-            )
-        else:
-            res = self.client.search(
-                collection_name=self.collection_name,
-                data=[self.dataset.query[search_vector_id,:]],
-                limit=limit,
-                output_fields=["id"],
-                filter=f"attribute <= {upper_bound}",
-                partition_names=partitions
-            )
-        end_time = time.monotonic()
+        with Timer() as timer:
+            if upper_bound is None:
+                res = self.client.search(
+                    collection_name=self.collection_name,
+                    data=[self.dataset.query[search_vector_id,:]],
+                    limit=limit,
+                    output_fields=["id"],
+                )
+            else:
+                res = self.client.search(
+                    collection_name=self.collection_name,
+                    data=[self.dataset.query[search_vector_id,:]],
+                    limit=limit,
+                    output_fields=["id"],
+                    filter=f"attribute <= {upper_bound}",
+                    partition_names=partitions
+                )
         
         if upper_bound is None:
             return self.SearchResults(
                 ground_truth=[i for i in self.dataset.ground_truth[search_vector_id]],
                 results=[x['id'] for x in res[0]],
-                time=end_time-start_time
+                time=timer.duration
             )
         return self.SearchResults(
             ground_truth=[i for i in self.dataset.ground_truth[search_vector_id] if self.attributes[i] <= upper_bound],
             results=[x['id'] for x in res[0]],
-            time=end_time-start_time
+            time=timer.duration
         )
 
 if __name__ == '__main__':
