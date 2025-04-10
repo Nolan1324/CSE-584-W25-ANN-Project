@@ -12,7 +12,7 @@ def is_tvl(val):
 def tvl_not(val: TVL) -> TVL:
     if not is_tvl(val):
         raise TypeError("Unsupported operand type(s) for tvl_not")
-    return Maybe if val is Maybe else val
+    return Maybe if val is Maybe else not val
 
 
 class MaybeCls:
