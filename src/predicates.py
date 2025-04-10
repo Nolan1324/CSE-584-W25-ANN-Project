@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, Generator, List, Literal, Optional, Tuple
 
-from hol import Maybe, HOL
+from tvl import Maybe, TVL
 
 class Operator(Enum):
     # EQ = "=="
