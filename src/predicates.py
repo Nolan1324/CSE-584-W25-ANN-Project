@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, Generator, List, Literal, Optional, Tuple
 
-from tvl import Maybe, TVL
+from tvl import Maybe, TVL, tvl_not
 
 class Operator(Enum):
     # EQ = "=="
@@ -25,7 +25,7 @@ class Predicate(ABC):
         pass
 
     @abstractmethod
-    def range_may_satisfy(self, ranges: Dict[str, Range]) -> HOL:
+    def range_may_satisfy(self, ranges: Dict[str, Range]) -> TVL:
         pass
 
     @abstractmethod
@@ -33,7 +33,7 @@ class Predicate(ABC):
         pass
 
 
-@dataclass
+@dataclass(frozen=True)
 class Atomic(Predicate):
     attr: str
     op: Operator
@@ -47,7 +47,7 @@ class Atomic(Predicate):
             case Operator.LTE:
                 return x <= self.value
 
-    def range_may_satisfy(self, ranges: Dict[str, Range]) -> HOL:
+    def range_may_satisfy(self, ranges: Dict[str, Range]) -> TVL:
         start, end = ranges[self.attr]
         match self.op:
             case Operator.GTE:
@@ -80,7 +80,7 @@ class And(Predicate):
     def evaluate(self, vals: Dict[str, int]) -> bool:
         return all(predicate.evaluate(vals) for predicate in self.predicates)
 
-    def range_may_satisfy(self, ranges: Dict[str, Range]) -> HOL:
+    def range_may_satisfy(self, ranges: Dict[str, Range]) -> TVL:
         val = True
         for predicate in self.predicates:
             val &= predicate.range_may_satisfy(ranges)
@@ -98,7 +98,7 @@ class Or(Predicate):
     def evaluate(self, vals: Dict[str, int]) -> bool:
         return any(predicate.evaluate(vals) for predicate in self.predicates)
 
-    def range_may_satisfy(self, ranges: Dict[str, Range]) -> HOL:
+    def range_may_satisfy(self, ranges: Dict[str, Range]) -> TVL:
         val = False
         for predicate in self.predicates:
             val |= predicate.range_may_satisfy(ranges)
@@ -107,6 +107,21 @@ class Or(Predicate):
     def atomics(self) -> Generator[Atomic, None, None]:
         for predicate in self.predicates:
             yield from predicate.atomics()
+
+
+class Not(Predicate):
+    def __init__(self, predicate: Predicate):
+        self.predicate = predicate
+
+    def evaluate(self, vals: Dict[str, int]) -> bool:
+        return not self.predicate.evaluate(vals)
+
+    def range_may_satisfy(self, ranges: Dict[str, Range]) -> TVL:
+        val = self.predicate.range_may_satisfy(ranges)
+        return tvl_not(val)
+
+    def atomics(self) -> Generator[Atomic, None, None]:
+        yield from self.predicate.atomics()
 
 
 if __name__ == "__main__":
