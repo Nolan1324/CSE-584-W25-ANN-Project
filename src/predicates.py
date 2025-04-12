@@ -7,7 +7,7 @@ from typing import Dict, Generator, List, Literal, Optional, Tuple
 
 from tvl import Maybe, TVL, tvl_not
 
-class Operator(Enum):
+class Operator(str, Enum):
     # EQ = "=="
     # NEQ = "!="
     # GT = ">"
@@ -72,6 +72,9 @@ class Atomic(Predicate):
     def atomics(self) -> Generator[Atomic, None, None]:
         yield self
 
+    def __str__(self):
+        return f"{self.attr} {str(self.op.value)} {self.value}"
+
 
 class And(Predicate):
     def __init__(self, *predicates: List[Predicate]):
@@ -89,6 +92,9 @@ class And(Predicate):
     def atomics(self) -> Generator[Atomic, None, None]:
         for predicate in self.predicates:
             yield from predicate.atomics()
+
+    def __str__(self):
+        return "(" + " and ".join(str(predicate) for predicate in self.predicates) + ")"
 
 
 class Or(Predicate):
@@ -108,6 +114,9 @@ class Or(Predicate):
         for predicate in self.predicates:
             yield from predicate.atomics()
 
+    def __str__(self):
+        return "(" + " or ".join(str(predicate) for predicate in self.predicates) + ")"
+
 
 class Not(Predicate):
     def __init__(self, predicate: Predicate):
@@ -123,9 +132,13 @@ class Not(Predicate):
     def atomics(self) -> Generator[Atomic, None, None]:
         yield from self.predicate.atomics()
 
+    def __str__(self):
+        return f"(not {self.predicate})"
+
 
 if __name__ == "__main__":
     pred = And(Atomic("x", Operator.GTE, 100), Atomic("x", Operator.LTE, 1000))
+    print(pred)
     print(pred.evaluate({"x": 500}))
     print(pred.evaluate({"x": 50}))
     print(pred.range_may_satisfy({"x": (500, 1000)}))
