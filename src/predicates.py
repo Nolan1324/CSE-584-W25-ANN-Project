@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, Generator, List, Literal, Optional, Tuple
+from typing import Dict, Generator, List, Literal, NamedTuple, Optional, Tuple
 
 from tvl import Maybe, TVL, tvl_not
 
@@ -15,9 +15,14 @@ class Operator(str, Enum):
     GTE = ">="
     LTE = "<="
 
-
 Range = Tuple[Optional[int], Optional[int]]
 
+# class Range(NamedTuple):
+#     start: int = None
+#     end: int = None
+
+#     def in_range(self, val: int) -> bool:
+#         return self.start <= val <= self.end
 
 class Predicate(ABC):
     @abstractmethod

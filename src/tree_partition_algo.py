@@ -25,6 +25,29 @@ class Node():
     def assert_well_formed(self):
         assert(bool(self.predicate and self.if_true and self.if_false) != bool(self.partition_name))
 
+    def find_partition(self, vals: Dict[str, int]) -> str:
+        if self.partition_name:
+            return self.partition_name
+        else:
+            if self.predicate.evaluate(vals):
+                return self.if_true.find_partition(vals)
+            else:
+                return self.if_false.find_partition(vals)
+            
+    def __str__(self):
+        if self.partition_name:
+            return self.partition_name
+        else:
+            out = str(self.predicate) + '\n'
+            for line in str(self.if_true).split('\n'):
+                out += '  ' + line + '\n'
+            out += str(Not(self.predicate)) + '\n'
+            for line in str(self.if_false).split('\n'):
+                out += '  ' + line + '\n'
+            out = out[:-1]
+            return out
+
+
 def build_tree(data: npt.NDArray, attr_names: List[str], atomics: List[Tuple[Atomic, int]], next_partition_index = [0]) -> Node:
     assert(len(data.shape) == 2)
     assert(data.shape[1] == len(attr_names))
@@ -77,14 +100,8 @@ def get_partitions_from_tree(node: Node, cur_ranges: Dict[str, Range] = None) ->
     else:
         return {node.partition_name: dict(cur_ranges)}
 
-
-if __name__ == '__main__':
-    workload = [
-        And(Atomic("x", Operator.GTE, 500), Not(Atomic("y", Operator.GTE, 100))),
-        Atomic("x", Operator.GTE, 500)
-    ]
-    atomics = counter_characterize_workload(workload)
-    print(atomics)
+def get_example_tree() -> Node:
+    atomics = [(Atomic("x", Operator.GTE, 500), 10), (Atomic("x", Operator.GTE, 100), 9), (Atomic("y", Operator.GTE, 300), 8)]
 
     n = 100000
     x = uniform_attributes(n, 584, np.int32, 0, 1000)
@@ -93,5 +110,22 @@ if __name__ == '__main__':
     data = np.column_stack((x, y))
 
     tree = build_tree(data, ['x', 'y'], atomics)
+
+    return tree
+
+if __name__ == '__main__':
+    # workload = [
+    #     And(Atomic("x", Operator.GTE, 500), Not(Atomic("y", Operator.GTE, 100))),
+    #     Atomic("x", Operator.GTE, 500)
+    # ]
+    # atomics = counter_characterize_workload(workload)
+    # print(atomics)
+
+    tree = get_example_tree()
+    print(tree)
+
     parts = get_partitions_from_tree(tree)
     print(parts)
+
+    print(tree.find_partition({'x': 100, 'y': 200}))
+    
