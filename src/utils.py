@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 
 
 ROOT_PATH = Path(__file__).parent.parent.resolve()
+WORKLOAD_PATH = ROOT_PATH / "data" / "workload"
 DATASET_PATH = ROOT_PATH / "data" / "datasets"
 EXPERIMENT_PATH = ROOT_PATH / "data" / "experiments"
 BIN_PATH = ROOT_PATH / "bin"
