@@ -12,8 +12,13 @@ from workload_char import counter_characterize_workload
 
 import numpy.typing as npt
 
-MIN_THRESHOLD = 1
-SELECTIVITY_THRESHOLD = 0.01
+
+@dataclass
+class TreeAlgoParams():
+    min_predicate_frequency: int = 1
+    selectivity_threshold: int = 0.01
+    min_partition_size: int = 1
+    max_num_partitions: int = 4096
 
 @dataclass
 class Node():
@@ -50,30 +55,30 @@ class Node():
             return out
 
 
-def build_tree(data: npt.NDArray, attr_names: List[str], atomics: List[Tuple[Atomic, int]], next_partition_index = [0]) -> Node:
+def build_tree(data: npt.NDArray, attr_names: List[str], atomics: List[Tuple[Atomic, int]], params: TreeAlgoParams, total_leaves=[1], next_partition_index=[0]) -> Node:
     assert(len(data.shape) == 2)
     assert(data.shape[1] == len(attr_names))
     
-    for i, (atomic_pred, freq) in enumerate(atomics):
-        if freq < MIN_THRESHOLD:
-            continue
-        # bit_mask = np.zeros(data.shape[0], dtype=bool)
-        # for i, row in enumerate(data):
-        #     row_dict = dict(zip(attr_names, row))
-        #     if atomic_pred.evaluate(row_dict):
-        #         bit_mask[i] = True
-        attr_index = attr_names.index(atomic_pred.attr)
-        col = data[:,attr_index]
-        assert(atomic_pred.op == Operator.GTE)
-        bit_mask = col >= atomic_pred.value
-        selectivity = np.sum(bit_mask) / data.shape[0]
-        if selectivity < SELECTIVITY_THRESHOLD or selectivity > (1 - SELECTIVITY_THRESHOLD):
-            continue
-        
-        if_true = build_tree(data[bit_mask], attr_names, atomics[i+1:])
-        if_false = build_tree(data[~bit_mask], attr_names, atomics[i+1:])
+    if total_leaves[0] + 1 <= params.max_num_partitions:
+        for i, (atomic_pred, freq) in enumerate(atomics):
+            if freq < params.min_predicate_frequency:
+                continue
 
-        return Node(if_true=if_true, if_false=if_false, predicate=atomic_pred) 
+            attr_index = attr_names.index(atomic_pred.attr)
+            col = data[:,attr_index]
+            assert(atomic_pred.op == Operator.GTE)
+            bit_mask = col >= atomic_pred.value
+            selectivity = np.sum(bit_mask) / data.shape[0]
+            if selectivity < params.selectivity_threshold or selectivity > (1 - params.selectivity_threshold):
+                continue
+            if np.sum(bit_mask) < params.min_partition_size or np.sum(~bit_mask) < params.min_partition_size:
+                continue
+            
+            total_leaves[0] += 1
+            if_true = build_tree(data[bit_mask], attr_names, atomics[i+1:], params)
+            if_false = build_tree(data[~bit_mask], attr_names, atomics[i+1:], params)
+
+            return Node(if_true=if_true, if_false=if_false, predicate=atomic_pred) 
     
     partition_name = f"part_{next_partition_index[0]}"
     next_partition_index[0] += 1
@@ -111,7 +116,7 @@ def get_example_tree() -> Node:
 
     data = np.column_stack((x, y))
 
-    tree = build_tree(data, ['x', 'y'], atomics)
+    tree = build_tree(data, ['x', 'y'], atomics, TreeAlgoParams(max_num_partitions=5))
 
     return tree
 
