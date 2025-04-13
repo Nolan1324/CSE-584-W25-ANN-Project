@@ -6,6 +6,7 @@ import numpy as np
 from tqdm import tqdm
 
 from experiment_utils import run_experiment, load_dataset
+from predicates import Atomic, Not, Operator
 from search import Searcher
 
 
@@ -20,11 +21,11 @@ def confusion(ground_truth: Iterable[int], results: Iterable[int]):
     return tp, fp, fn
 
 
-def test(logger: logging.Logger, schema_config: dict, workflow_config: dict, dataset_config: dict, partitioner, attributes) -> dict:
+def test(logger: logging.Logger, schema_config: dict, workflow_config: dict, dataset_config: dict, partitioner, attribute_names, attribute_data) -> dict:
     logger.info("Running search...")
     dataset = load_dataset(dataset_config, base=False)
     logger.info(f"Loaded query dataset: {dataset}")
-    searcher = Searcher("data", attributes, dataset, partitioner)
+    searcher = Searcher("data", attribute_names, attribute_data, dataset, partitioner)
     times = []
     filter_used_list = []
     tp_list = []
@@ -37,7 +38,7 @@ def test(logger: logging.Logger, schema_config: dict, workflow_config: dict, dat
         filter_used = random.random() <= workflow_config["filter_percentage"]
         filter_used_list.append(filter_used)
         if filter_used:
-            search_results = searcher.do_search(index, upper_bound=int(dataset_config["max_attribute"] * workflow_config["selectivity"]), limit=workflow_config["k"])
+            search_results = searcher.do_search(index, Not(Atomic('x', Operator.GTE, int(dataset_config["max_attribute"] * workflow_config["selectivity"]) + 1)), limit=workflow_config["k"])
         else:
             search_results = searcher.do_search(index, limit=workflow_config["k"])
         tp, fp, fn = confusion(search_results.ground_truth, search_results.results)

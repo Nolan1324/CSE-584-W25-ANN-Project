@@ -9,6 +9,8 @@ from typing import Callable
 
 import numpy as np
 
+from multirange_partitioner import MultiRangePartitioner
+from predicates import Range
 from sift import Dataset, load_sift_1b, load_sift_1m, load_sift_small
 from create_db import Creator
 from partitioner import RangePartitioner, ModPartitioner
@@ -60,13 +62,13 @@ def run_experiment(name: str, config: dict, experiment: Callable) -> None:
             db_logger = configure_logging(experiment_dir, f"trial{trial_i}_schema{schema_i}_db")
             with docker_container():
                 print(f"Configuring schema {schema_i + 1}/{len(schemas)} and trial {trial_i + 1}/{config['trials']}...")
-                partitioner, attributes = setup_db(db_logger, schema, config["dataset"])
+                partitioner, attribute_names, attribute_data = setup_db(db_logger, schema, config["dataset"])
                 for workflow_i, workflow in enumerate(workflows):
                     current_experiment += 1
                     print(f"Running workflow {workflow_i + 1}/{len(workflows)} (experiment {current_experiment}/{n_experiments})...")
                     trial_name = f"trial{trial_i}_schema{schema_i}_workflow{workflow_i}"
                     logger = configure_logging(experiment_dir, trial_name)
-                    results = experiment(logger, schema, workflow, config["dataset"], partitioner, attributes)
+                    results = experiment(logger, schema, workflow, config["dataset"], partitioner, attribute_names, attribute_data)
                     with open(experiment_dir / f"{trial_name}.json", "w") as results_file:
                         json.dump(results, results_file, indent=4)
 
@@ -112,23 +114,32 @@ def configure_logging(experiment_path: Path, name: str) -> logging.Logger:
     return logger
 
 
-def setup_db(logger: logging.Logger, schema_config: dict, dataset_config: dict) -> tuple[RangePartitioner, np.ndarray]:
+def setup_db(logger: logging.Logger, schema_config: dict, dataset_config: dict) -> tuple[MultiRangePartitioner, list[str], np.ndarray]:
     dataset = load_dataset(dataset_config, base=True)
-    attributes = np.random.default_rng().uniform(0, dataset_config["max_attribute"], dataset.num_base_vecs).astype(int)
+    attributes = np.random.default_rng().uniform(0, dataset_config["max_attribute"], (dataset.num_base_vecs,1)).astype(int)
     logger.info(f"Loaded dataset: {dataset}")
     
+    # if schema_config["partitioner"] == "range":
+    #     partitions = [
+    #         (round(i), round(i + dataset_config["max_attribute"] // schema_config["n_partitions"] - 1))
+    #         for i in np.linspace(0, dataset_config["max_attribute"], schema_config["n_partitions"], endpoint=False)
+    #     ]
+    #     partitioner = RangePartitioner(partitions)
+    #     logger.info(f"Using range partitioner with partitions: {partitions}")
+    # elif schema_config["partitioner"] == "mod":
+    #     partitioner = ModPartitioner(schema_config["n_partitions"])
+
     if schema_config["partitioner"] == "range":
-        partitions = [
-            (round(i), round(i + dataset_config["max_attribute"] // schema_config["n_partitions"] - 1))
-            for i in np.linspace(0, dataset_config["max_attribute"], schema_config["n_partitions"], endpoint=False)
-        ]
-        partitioner = RangePartitioner(partitions)
+        partitions = {}
+        for i in np.linspace(0, dataset_config["max_attribute"], schema_config["n_partitions"], endpoint=False):
+            range_ = Range(round(i), round(i + dataset_config["max_attribute"] // schema_config["n_partitions"] - 1))
+            partitions[f'{range_[0]}_{range_[1]}'] = {'x': range_}
+        partitioner = MultiRangePartitioner.from_partitions(partitions)
         logger.info(f"Using range partitioner with partitions: {partitions}")
-    elif schema_config["partitioner"] == "mod":
-        partitioner = ModPartitioner(schema_config["n_partitions"])
     
-    creator = Creator(partitioner, datatype=dataset.datatype, logger=logger)
+    attribute_names = ['x']
+    creator = Creator(partitioner, attributes=attribute_names, datatype=dataset.datatype, logger=logger)
     creator.create_collection_schema()
-    creator.populate_collection(dataset, attributes, index_type=schema_config["index"])
+    creator.populate_collection(dataset, attributes, index_type=schema_config["index"], flush=schema_config.get("flush", True))
     
-    return partitioner, attributes
+    return partitioner, attribute_names, attributes

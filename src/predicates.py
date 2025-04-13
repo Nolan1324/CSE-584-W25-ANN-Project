@@ -15,14 +15,12 @@ class Operator(str, Enum):
     GTE = ">="
     LTE = "<="
 
-Range = Tuple[Optional[int], Optional[int]]
+class Range(NamedTuple):
+    start: int = None
+    end: int = None
 
-# class Range(NamedTuple):
-#     start: int = None
-#     end: int = None
-
-#     def in_range(self, val: int) -> bool:
-#         return self.start <= val <= self.end
+    def contains(self, val: int) -> bool:
+        return self.start <= val <= self.end
 
 class Predicate(ABC):
     @abstractmethod
@@ -99,7 +97,7 @@ class And(Predicate):
             yield from predicate.atomics()
 
     def __str__(self):
-        return "(" + " and ".join(str(predicate) for predicate in self.predicates) + ")"
+        return " and ".join(f'({predicate})' for predicate in self.predicates)
 
 
 class Or(Predicate):
@@ -120,7 +118,7 @@ class Or(Predicate):
             yield from predicate.atomics()
 
     def __str__(self):
-        return "(" + " or ".join(str(predicate) for predicate in self.predicates) + ")"
+        return " or ".join(f'({predicate})' for predicate in self.predicates)
 
 
 class Not(Predicate):
@@ -138,7 +136,7 @@ class Not(Predicate):
         yield from self.predicate.atomics()
 
     def __str__(self):
-        return f"(not {self.predicate})"
+        return f"not ({self.predicate})"
 
 
 if __name__ == "__main__":
@@ -146,7 +144,7 @@ if __name__ == "__main__":
     print(pred)
     print(pred.evaluate({"x": 500}))
     print(pred.evaluate({"x": 50}))
-    print(pred.range_may_satisfy({"x": (500, 1000)}))
-    print(pred.range_may_satisfy({"x": (50, 200)}))
-    print(pred.range_may_satisfy({"x": (0, 10)}))
+    print(pred.range_may_satisfy({"x": Range(500, 1000)}))
+    print(pred.range_may_satisfy({"x": Range(50, 200)}))
+    print(pred.range_may_satisfy({"x": Range(0, 10)}))
     print(list(pred.atomics()))

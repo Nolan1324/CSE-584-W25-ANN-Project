@@ -14,7 +14,7 @@ def normal_attributes(n: int, seed: int, dtype: type, mean: float, std: float) -
     return (mean + std * rng.standard_normal(n)).astype(dtype)
 
 def uniform_attributes_basic(n: int):
-    return uniform_attributes(n, 584, np.int32, 0, 1000).squeeze()
+    return uniform_attributes(n, 584, np.int32, 0, 1000)[:,None]
 
 def geometric_attributes_basic(n: int, p: float):
     return geometric_attributes(n, 584, np.int32, p).squeeze()

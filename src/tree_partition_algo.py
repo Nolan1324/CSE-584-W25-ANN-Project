@@ -26,6 +26,7 @@ class Node():
         assert(bool(self.predicate and self.if_true and self.if_false) != bool(self.partition_name))
 
     def find_partition(self, vals: Dict[str, int]) -> str:
+        self.assert_well_formed()
         if self.partition_name:
             return self.partition_name
         else:
@@ -35,6 +36,7 @@ class Node():
                 return self.if_false.find_partition(vals)
             
     def __str__(self):
+        self.assert_well_formed()
         if self.partition_name:
             return self.partition_name
         else:
@@ -88,10 +90,10 @@ def get_partitions_from_tree(node: Node, cur_ranges: Dict[str, Range] = None) ->
         start, end = cur_ranges[node.predicate.attr]
 
         true_ranges = cur_ranges.copy()
-        true_ranges[node.predicate.attr] = (max(start or value, value), end)
+        true_ranges[node.predicate.attr] = Range(max(start or value, value), end)
         
         false_ranges = cur_ranges.copy()
-        false_ranges[node.predicate.attr] = (start, min(end or (value - 1), value - 1))
+        false_ranges[node.predicate.attr] = Range(start, min(end or (value - 1), value - 1))
 
         true_partitions = get_partitions_from_tree(node.if_true, true_ranges)
         false_partitions = get_partitions_from_tree(node.if_false, false_ranges)
