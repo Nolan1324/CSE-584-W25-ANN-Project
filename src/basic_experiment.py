@@ -63,25 +63,25 @@ def test(logger: logging.Logger, schema_config: dict, workflow_config: dict, dat
 
 
 if __name__ == "__main__":
-    name = "baseline"
+    name = "partition_baseline"
     function = test
     
     experiment_grid = {
         "kill_on_fail": False,
-        "trials": 3,
+        "trials": 1,
         "schemas": {
-            "index": ["HNSW", "IVF_FLAT"],
-            "partitioner": ["mod", "range"],
-            "n_partitions": [5, 10, 100],
+            "index": ["IVF_FLAT"],
+            "partitioner": ["range"],
+            "n_partitions": [1, 2, 5, 10, 100, 1000],
         },
         "workflows": {
-            "selectivity": [0.01, 0.1, 0.5, 0.9],
+            "selectivity": [0.1, 0.5],
             "filter_percentage": [0.1, 0.5, 0.9],
             "k": 1_000,
         },
         "dataset": {
             "name": "sift_1b",
-            "size": 5,
+            "size": 10,
             "max_attribute": 1_000,
         }
     }

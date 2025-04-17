@@ -14,7 +14,10 @@ from predicates import Range
 from sift import Dataset, load_sift_1b, load_sift_1m, load_sift_small
 from create_db import Creator
 from partitioner import RangePartitioner, ModPartitioner
+from tree_partition_algo import TreeAlgoParams, build_tree
 from utils import expand_experiment_grid, BIN_PATH, CONFIG_PATH, EXPERIMENT_PATH, DATASET_PATH
+from workload import Workload
+from workload_char import counter_characterize_workload
 
 
 @contextmanager
@@ -60,15 +63,18 @@ def run_experiment(name: str, config: dict, experiment: Callable) -> None:
     for trial_i in range(config["trials"]):
         for schema_i, schema in enumerate(schemas):
             db_logger = configure_logging(experiment_dir, f"trial{trial_i}_schema{schema_i}_db")
+            workflow_params = Workload.create_synthetic_workload(config["dataset"]["attributes"])
             with docker_container():
                 print(f"Configuring schema {schema_i + 1}/{len(schemas)} and trial {trial_i + 1}/{config['trials']}...")
-                partitioner, attribute_names, attribute_data = setup_db(db_logger, schema, config["dataset"])
+                workload = Workload.sample_synthetic_workload(2000000, *workflow_params)
+                print("Loaded workload")
+                partitioner, attribute_names, attribute_data = setup_db(db_logger, schema, config["dataset"], workload)
                 for workflow_i, workflow in enumerate(workflows):
                     current_experiment += 1
                     print(f"Running workflow {workflow_i + 1}/{len(workflows)} (experiment {current_experiment}/{n_experiments})...")
                     trial_name = f"trial{trial_i}_schema{schema_i}_workflow{workflow_i}"
                     logger = configure_logging(experiment_dir, trial_name)
-                    results = experiment(logger, schema, workflow, config["dataset"], partitioner, attribute_names, attribute_data)
+                    results = experiment(logger, schema, workflow, config["dataset"], partitioner, attribute_names, attribute_data, workflow_params)
                     with open(experiment_dir / f"{trial_name}.json", "w") as results_file:
                         json.dump(results, results_file, indent=4)
 
@@ -114,9 +120,9 @@ def configure_logging(experiment_path: Path, name: str) -> logging.Logger:
     return logger
 
 
-def setup_db(logger: logging.Logger, schema_config: dict, dataset_config: dict) -> tuple[MultiRangePartitioner, list[str], np.ndarray]:
+def setup_db(logger: logging.Logger, schema_config: dict, dataset_config: dict, workload = None) -> tuple[MultiRangePartitioner, list[str], np.ndarray]:
     dataset = load_dataset(dataset_config, base=True)
-    attributes = np.random.default_rng().uniform(0, dataset_config["max_attribute"], (dataset.num_base_vecs,1)).astype(int)
+    attributes = np.random.default_rng().uniform(0, dataset_config["max_attribute"], (dataset.num_base_vecs, dataset_config["n_attributes"])).astype(int)
     logger.info(f"Loaded dataset: {dataset}")
     
     # if schema_config["partitioner"] == "range":
@@ -126,20 +132,26 @@ def setup_db(logger: logging.Logger, schema_config: dict, dataset_config: dict) 
     #     ]
     #     partitioner = RangePartitioner(partitions)
     #     logger.info(f"Using range partitioner with partitions: {partitions}")
-    # elif schema_config["partitioner"] == "mod":
+    # if schema_config["partitioner"] == "mod":
     #     partitioner = ModPartitioner(schema_config["n_partitions"])
 
     if schema_config["partitioner"] == "range":
         partitions = {}
         for i in np.linspace(0, dataset_config["max_attribute"], schema_config["n_partitions"], endpoint=False):
             range_ = Range(round(i), round(i + dataset_config["max_attribute"] // schema_config["n_partitions"] - 1))
-            partitions[f'{range_[0]}_{range_[1]}'] = {'x': range_}
+            partitions[f'{range_[0]}_{range_[1]}'] = {dataset_config["attributes"][0]: range_}
         partitioner = MultiRangePartitioner.from_partitions(partitions)
         logger.info(f"Using range partitioner with partitions: {partitions}")
+    elif schema_config["partitioner"] == "tree":
+        predicates = counter_characterize_workload(workload)
+        tree = build_tree(attributes, dataset_config["attributes"], predicates, TreeAlgoParams(
+            max_num_partitions=schema_config["n_partitions"],
+        ))
+        partitioner = MultiRangePartitioner.from_tree(tree)
+        logger.info(f"Using tree partitioner with {schema_config['n_partitions']} partitions.")
     
-    attribute_names = ['x']
-    creator = Creator(partitioner, attributes=attribute_names, datatype=dataset.datatype, logger=logger)
+    creator = Creator(partitioner, attributes=dataset_config["attributes"], datatype=dataset.datatype, logger=logger)
     creator.create_collection_schema()
     creator.populate_collection(dataset, attributes, index_type=schema_config["index"], flush=schema_config.get("flush", True))
     
-    return partitioner, attribute_names, attributes
+    return partitioner, dataset_config["attributes"], attributes

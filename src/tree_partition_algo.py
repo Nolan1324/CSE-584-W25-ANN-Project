@@ -15,10 +15,11 @@ import numpy.typing as npt
 
 @dataclass
 class TreeAlgoParams():
-    min_predicate_frequency: int = 1
-    selectivity_threshold: int = 0.01
-    min_partition_size: int = 1
+    min_predicate_frequency: int = 10
+    selectivity_threshold: int = 0.11
+    min_partition_size: int = 1_000
     max_num_partitions: int = 4096
+
 
 @dataclass
 class Node():

@@ -41,6 +41,9 @@ class Atomic(Predicate):
     attr: str
     op: Operator
     value: int
+    
+    def __post_init__(self):
+        object.__setattr__(self, 'attr', str(self.attr))
 
     def evaluate(self, vals: Dict[str, int]) -> bool:
         x = vals[self.attr]
@@ -51,6 +54,8 @@ class Atomic(Predicate):
                 return x <= self.value
 
     def range_may_satisfy(self, ranges: Dict[str, Range]) -> TVL:
+        if self.attr not in ranges:
+            return Maybe
         start, end = ranges[self.attr]
         match self.op:
             case Operator.GTE:
@@ -75,7 +80,7 @@ class Atomic(Predicate):
     def atomics(self) -> Generator[Atomic, None, None]:
         yield self
 
-    def __str__(self):
+    def __repr__(self):
         return f"{self.attr} {str(self.op.value)} {self.value}"
 
 
@@ -96,7 +101,7 @@ class And(Predicate):
         for predicate in self.predicates:
             yield from predicate.atomics()
 
-    def __str__(self):
+    def __repr__(self):
         return " and ".join(f'({predicate})' for predicate in self.predicates)
 
 
@@ -117,7 +122,7 @@ class Or(Predicate):
         for predicate in self.predicates:
             yield from predicate.atomics()
 
-    def __str__(self):
+    def __repr__(self):
         return " or ".join(f'({predicate})' for predicate in self.predicates)
 
 
@@ -135,8 +140,8 @@ class Not(Predicate):
     def atomics(self) -> Generator[Atomic, None, None]:
         yield from self.predicate.atomics()
 
-    def __str__(self):
-        return f"not ({self.predicate})"
+    def __repr__(self):
+        return f"not({self.predicate})"
 
 
 if __name__ == "__main__":

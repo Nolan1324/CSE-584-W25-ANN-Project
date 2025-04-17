@@ -1,0 +1,2 @@
+2025-04-16 20:33:43,887 | trial0_schema3_db    | INFO     | Logging to /home/evangebo/Repositories/cse584/data/experiments/partition_baseline (2025-04-16 19:17:36)/trial0_schema3_db.log
+2025-04-16 20:35:16,701 | trial0_schema3_db    | INFO     | Loaded dataset: Dataset(name="sift", num_base_vecs=5,000,000, num_query_vecs=0, d=128, datatype=FLOAT32)

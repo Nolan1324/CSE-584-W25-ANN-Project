@@ -1,0 +1,73 @@
+{
+    "kill_on_fail": false,
+    "trials": 1,
+    "schemas": {
+        "index": [
+            "IVF_FLAT"
+        ],
+        "partitioner": [
+            "range",
+            "tree"
+        ],
+        "n_partitions": [
+            10,
+            100,
+            1000
+        ]
+    },
+    "workflows": {
+        "synthetic": [
+            true
+        ]
+    },
+    "dataset": {
+        "name": "sift_1b",
+        "size": 5,
+        "max_attribute": 1000,
+        "attributes": [
+            "w",
+            "x",
+            "y",
+            "z"
+        ],
+        "n_attributes": 4,
+        "k": 10000
+    },
+    "expanded_schemas": [
+        {
+            "index": "IVF_FLAT",
+            "partitioner": "range",
+            "n_partitions": 10
+        },
+        {
+            "index": "IVF_FLAT",
+            "partitioner": "range",
+            "n_partitions": 100
+        },
+        {
+            "index": "IVF_FLAT",
+            "partitioner": "range",
+            "n_partitions": 1000
+        },
+        {
+            "index": "IVF_FLAT",
+            "partitioner": "tree",
+            "n_partitions": 10
+        },
+        {
+            "index": "IVF_FLAT",
+            "partitioner": "tree",
+            "n_partitions": 100
+        },
+        {
+            "index": "IVF_FLAT",
+            "partitioner": "tree",
+            "n_partitions": 1000
+        }
+    ],
+    "expanded_workflows": [
+        {
+            "synthetic": true
+        }
+    ]
+}

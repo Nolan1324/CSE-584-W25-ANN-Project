@@ -1,0 +1,4 @@
+2025-04-16 19:32:48,049 | trial0_schema1_workflow0 | INFO     | Logging to /home/evangebo/Repositories/cse584/data/experiments/partition_baseline (2025-04-16 19:17:36)/trial0_schema1_workflow0.log
+2025-04-16 19:32:48,049 | trial0_schema1_workflow0 | INFO     | Running search...
+2025-04-16 19:32:48,421 | trial0_schema1_workflow0 | INFO     | Loaded query dataset: Dataset(name="sift", num_base_vecs=0, num_query_vecs=10,000, d=128, datatype=FLOAT32)
+2025-04-16 19:37:28,070 | trial0_schema1_workflow0 | INFO     | Search complete.
