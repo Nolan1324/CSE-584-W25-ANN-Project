@@ -1,24 +1,32 @@
+import logging
 import time
-from typing import List, Optional, Tuple
 from logging import Logger
+from typing import List, Optional
 
 import numpy as np
 from pymilvus import CollectionSchema, DataType, FieldSchema, MilvusClient
-from pymilvus import utility
 from tqdm import tqdm
 
+from attributes import uniform_attributes_basic
+from client import get_client
 from multirange_partitioner import MultiRangePartitioner
 from predicates import Range
 from sift import Dataset, load_sift_1m
-from client import get_client
-from partitioner import Partitioner, RangePartitioner
-from attributes import uniform_attributes, uniform_attributes_basic
 from utils import Timer
-
-import logging
 
 
 class Creator:
+    """
+    A class to manage the creation, population, and maintenance of a collection in a database.
+    
+    Attributes:
+        partitioner: An optional partitioner to manage partitions in the collection.
+        attributes: A list of attribute names to be included in the collection schema.
+        datatype: The data type of the vector field in the collection.
+        logger: A logger instance for logging operations. If not provided, a default logger is used.
+    """
+    
+    
     def __init__(
         self,
         partitioner: Optional[MultiRangePartitioner] = None,
@@ -30,11 +38,16 @@ class Creator:
         self.partitioner = partitioner
         self.datatype = datatype
         self.attributes = attributes
-        self.logger: Logger = (
-            logger.getChild("Creator") if logger else logging.getLogger("null")
-        )
+        self.logger: Logger = logger.getChild("Creator") if logger else logging.getLogger("null")
 
     def create_collection_schema(self, name: str = "data"):
+        """
+        Creates a collection schema with the specified name.
+
+        Args:
+            name: The name of the collection to create. Defaults to "data".
+        """
+        
         if self.client.has_collection(name):
             self.client.drop_collection(name)
 
@@ -81,14 +94,26 @@ class Creator:
         flush: bool = True,
         name: str = "data",
     ):
+        """
+        Populates the collection with data from the provided dataset and attributes.
+
+        Args:
+            dataset: The dataset containing the base vectors to be inserted into the collection.
+            attributes_data: A 2D numpy array where each row corresponds to the attributes
+            of a vector in the dataset. The number of rows must match the number of base vectors in the dataset.
+            index_type: The type of index to create for the vector field. Defaults to "HNSW".
+            flush: Whether to flush the collection after inserting data. Defaults to True.
+            name: The name of the collection to populate. Defaults to "data".
+
+        Returns:
+            None
+        """
+        
         assert len(attributes_data.shape) == 2
         assert dataset.num_base_vecs == attributes_data.shape[0]
 
         def _get_attributes_dict(row_index):
-            return {
-                name: value
-                for name, value in zip(self.attributes, attributes_data[row_index])
-            }
+            return {name: value for name, value in zip(self.attributes, attributes_data[row_index])}
 
         if self.partitioner is None:
             CHUNK_SIZE = 10000
@@ -102,9 +127,7 @@ class Creator:
                         "vector": list(vector),
                     }
                     | _get_attributes_dict(i + offset)
-                    for offset, vector in enumerate(
-                        iter(dataset.base[i : i + CHUNK_SIZE])
-                    )
+                    for offset, vector in enumerate(iter(dataset.base[i : i + CHUNK_SIZE]))
                 ]
                 res = self.client.insert(collection_name=name, data=data)
         else:
@@ -119,14 +142,9 @@ class Creator:
                     | _get_attributes_dict(index)
                     for index in batch
                 ]
-                res = self.client.insert(
-                    collection_name=name, data=data, partition_name=partition_name
-                )
+                res = self.client.insert(collection_name=name, data=data, partition_name=partition_name)
 
-            partition_batches = {
-                partition_name: []
-                for partition_name in self.partitioner.partition_names
-            }
+            partition_batches = {partition_name: [] for partition_name in self.partitioner.partition_names}
             for i in tqdm(range(0, dataset.num_base_vecs)):
                 partition_name = self.partitioner.get_partition(_get_attributes_dict(i))
                 batch = partition_batches[partition_name]
@@ -151,9 +169,7 @@ class Creator:
                 index_type=index_type,
                 index_name="vector_index",
             )
-            self.client.create_index(
-                collection_name=name, index_params=index_params, sync=True
-            )
+            self.client.create_index(collection_name=name, index_params=index_params, sync=True)
 
         with Timer(self.logger, "loading"):
             self.client.load_collection(name)
@@ -170,6 +186,7 @@ class Creator:
         # self.client.load_partitions(name, self.partitioner.partition_names)
 
     def cluster_compact(self, name):
+        """Run the default Milvus compaction optimization on the collection."""
         job = self.client.compact(name, is_clustering=True)
         while self.client.get_compaction_state(job) != "Completed":
             time.sleep(5.0)
@@ -189,8 +206,6 @@ if __name__ == "__main__":
     print("Creating schema")
     creator.create_collection_schema()
     print("Populating collection")
-    creator.populate_collection(
-        dataset, uniform_attributes_basic(dataset.num_base_vecs)
-    )
+    creator.populate_collection(dataset, uniform_attributes_basic(dataset.num_base_vecs))
     # print('Cluster compaction')
     # creator.cluster_compact(name)

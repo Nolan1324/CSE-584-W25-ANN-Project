@@ -3,15 +3,16 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, Generator, List, Literal, NamedTuple, Optional, Tuple
+from typing import Dict, Generator, List, NamedTuple
 
 from tvl import Maybe, TVL, tvl_not
 
+
 class Operator(str, Enum):
-    """A binary operator in an atomic predicate. Currently only >= is supported.
-    """
+    """A binary operator in an atomic predicate. Currently only >= is currently supported."""
 
     GTE = ">="
+
 
 class Range(NamedTuple):
     """An integer range, inclusive.
@@ -35,9 +36,9 @@ class Range(NamedTuple):
         """
         return self.start <= val <= self.end
 
+
 class Predicate(ABC):
-    """A logical predicate on one or many scalar attributes.
-    """
+    """A logical predicate on one or many scalar attributes."""
 
     @abstractmethod
     def evaluate(self, vals: Dict[str, int]) -> bool:
@@ -53,7 +54,7 @@ class Predicate(ABC):
 
     @abstractmethod
     def range_may_satisfy(self, ranges: Dict[str, Range]) -> TVL:
-        """Given a range of possible values for each attribute, 
+        """Given a range of possible values for each attribute,
         tests if the predicate satisfies **all** values in the ranges, **some** values, or **no** values.
 
         Args:
@@ -94,17 +95,17 @@ class Atomic(Predicate):
     Is of the form (attr op value) where attr is an attribute name, op is a binary operator (like >=), and `value` is a constant.
 
     Attributes:
-        attr (str): Name of the attribute.
-        op (Operator): The operator type.
-        value (int): The value that the attribute is compared against.
+        attr: Name of the attribute.
+        op: The operator type.
+        value: The value that the attribute is compared against.
     """
 
     attr: str
     op: Operator
     value: int
-    
+
     def __post_init__(self):
-        object.__setattr__(self, 'attr', str(self.attr))
+        object.__setattr__(self, "attr", str(self.attr))
 
     def evaluate(self, vals: Dict[str, int]) -> bool:
         x = vals[self.attr]
@@ -129,25 +130,31 @@ class Atomic(Predicate):
                 assert False
 
     def atomics(self) -> Generator[Atomic, None, None]:
+        """
+        A generator method that yields the current instance as an atomic element.
+        
+        Yields:
+            The current instance as an atomic element.
+        """
+        
         yield self
 
     def to_filter_string(self) -> str:
         return f"{self.attr} {str(self.op.value)} {self.value}"
-    
+
     def __repr__(self):
         return self.to_filter_string()
 
 
 class And(Predicate):
-    """An "and" of many predicates.
-    """
+    """An "and" of many predicates."""
 
     def __init__(self, *predicates: List[Predicate]):
         """
         Constructs an "and" predicate.
         Args:
             *predicates (List[Predicate]): The predicates on which "and" applies to.
-        """       
+        """
 
         self.predicates = predicates
 
@@ -165,15 +172,14 @@ class And(Predicate):
             yield from predicate.atomics()
 
     def to_filter_string(self) -> str:
-        return " and ".join(f'({predicate})' for predicate in self.predicates)
-    
+        return " and ".join(f"({predicate})" for predicate in self.predicates)
+
     def __repr__(self):
         return self.to_filter_string()
 
 
 class Or(Predicate):
-    """An "or" of many predicates.
-    """
+    """An "or" of many predicates."""
 
     def __init__(self, *predicates: List[Predicate]):
         """
@@ -197,15 +203,14 @@ class Or(Predicate):
             yield from predicate.atomics()
 
     def to_filter_string(self) -> str:
-        return " or ".join(f'({predicate})' for predicate in self.predicates)
-    
+        return " or ".join(f"({predicate})" for predicate in self.predicates)
+
     def __repr__(self):
         return self.to_filter_string()
 
 
 class Not(Predicate):
-    """The negation of a predicate.
-    """
+    """The negation of a predicate."""
 
     def __init__(self, predicate: Predicate):
         """
@@ -227,12 +232,13 @@ class Not(Predicate):
 
     def to_filter_string(self) -> str:
         return f"not({self.predicate})"
-    
+
     def __repr__(self):
         return self.to_filter_string()
 
 
 if __name__ == "__main__":
+    # example use case
     pred = And(Atomic("x", Operator.GTE, 100), Not(Atomic("x", Operator.GTE, 1001)))
     print(pred)
     print(pred.evaluate({"x": 500}))

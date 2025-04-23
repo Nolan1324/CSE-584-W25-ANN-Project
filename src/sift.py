@@ -11,6 +11,23 @@ from fvecs import vecs_read
 
 @dataclass
 class Dataset:
+    """
+    A class representing a dataset for vector-based operations, including base vectors, 
+    query vectors, and ground truth data. This class also provides metadata about the 
+    dataset, such as the dimensionality of the vectors and the number of vectors.
+    
+    Attributes:
+        base: The base dataset containing vectors. Default is None.
+        ground_truth: The ground truth data for the dataset. Default is None.
+        query: The query dataset containing vectors. Default is None.
+        datatype: The datatype of the vectors, either FLOAT_VECTOR or FLOAT16_VECTOR.
+                  Default is DataType.FLOAT_VECTOR.
+        d: The dimensionality of the vectors. Automatically initialized based on the 
+           shape of the `query` or `base` dataset.
+        num_base_vecs: The number of vectors in the base dataset. Automatically initialized.
+        num_query_vecs: The number of vectors in the query dataset. Automatically initialized.
+    """
+    
     base: npt.NDArray = None
     ground_truth: npt.NDArray = None
     query: npt.NDArray = None
@@ -30,6 +47,20 @@ class Dataset:
 
 
 def load_sift_1b(directory: PathLike, n: int, base: bool) -> Dataset:
+    """
+    Loads a subset of the SIFT1B dataset.
+    
+    Args:
+        directory: The directory containing the SIFT1B dataset files.
+        n: The number of millions of vectors to load.
+        base: A flag indicating whether to load the base vectors or the ground truth and query vectors.
+        
+    Returns:
+        A Dataset object containing the requested subset of the SIFT1B dataset.
+        If `base` is True, only the base vectors are loaded. If `base` is False,
+        the ground truth and query vectors are loaded.
+    """
+    
     assert n in [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000]
     directory = Path(directory)
     return Dataset(
@@ -41,6 +72,19 @@ def load_sift_1b(directory: PathLike, n: int, base: bool) -> Dataset:
 
 
 def load_sift_small(directory: PathLike, base: bool) -> Dataset:
+    """
+    Loads the SIFT small dataset.
+    
+    Args:
+        directory: The directory containing the SIFT small dataset files.
+        base: A flag indicating whether to load the base vectors or the ground truth and query vectors.
+        
+    Returns:
+        A Dataset object containing the SIFT small dataset.
+        If `base` is True, only the base vectors are loaded. If `base` is False,
+        the ground truth and query vectors are loaded.
+    """
+    
     directory = Path(directory)
     return Dataset(
         base=vecs_read(directory / "siftsmall_base.fvecs") if base else None,
@@ -50,6 +94,19 @@ def load_sift_small(directory: PathLike, base: bool) -> Dataset:
 
 
 def load_sift_1m(directory: PathLike, base: bool) -> Dataset:
+    """
+    Loads the SIFT 1M dataset.
+    
+    Args:
+        directory: The directory containing the SIFT 1M dataset files.
+        base: A flag indicating whether to load the base vectors or the ground truth and query vectors.
+        
+    Returns:
+        A Dataset object containing the SIFT 1M dataset.
+        If `base` is True, only the base vectors are loaded. If `base` is False,
+        the ground truth and query vectors are loaded.
+    """
+    
     directory = Path(directory)
     return Dataset(
         base=vecs_read(directory / "sift_base.fvecs") if base else None,

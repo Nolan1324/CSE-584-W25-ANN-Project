@@ -1,10 +1,11 @@
 [project]
 name = "cse584"
-version = "0.1.0"
-description = "Add your description here"
-readme = "README.md"
+version = "1.0.0"
+description = "CSE 584 Project"
+readme = "readme.txt"
 requires-python = ">=3.13"
 dependencies = [
+    "black>=25.1.0",
     "dotenv>=0.9.9",
     "ipykernel>=6.29.5",
     "matplotlib>=3.10.1",
