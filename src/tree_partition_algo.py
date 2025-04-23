@@ -127,8 +127,8 @@ def _build_tree_helper(data: npt.NDArray, attr_names: List[str], atomics: List[T
                 continue
             
             total_leaves[0] += 1
-            if_true = build_tree(data[bit_mask], attr_names, atomics[i+1:], params)
-            if_false = build_tree(data[~bit_mask], attr_names, atomics[i+1:], params)
+            if_true = _build_tree_helper(data[bit_mask], attr_names, atomics[i+1:], params)
+            if_false = _build_tree_helper(data[~bit_mask], attr_names, atomics[i+1:], params)
 
             return PartitionTree(if_true=if_true, if_false=if_false, predicate=atomic_pred) 
     
@@ -162,8 +162,8 @@ def _get_partitions_from_tree_helper(node: PartitionTree, cur_ranges: Dict[str, 
         false_ranges = cur_ranges.copy()
         false_ranges[node.predicate.attr] = Range(start, min(end or (value - 1), value - 1))
 
-        true_partitions = get_partitions_from_tree(node.if_true, true_ranges)
-        false_partitions = get_partitions_from_tree(node.if_false, false_ranges)
+        true_partitions = _get_partitions_from_tree_helper(node.if_true, true_ranges)
+        false_partitions = _get_partitions_from_tree_helper(node.if_false, false_ranges)
 
         return true_partitions | false_partitions
     else:
