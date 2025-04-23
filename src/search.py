@@ -6,7 +6,6 @@ from multirange_partitioner import MultiRangePartitioner
 from predicates import Atomic, Not, Operator, Predicate, Range
 from sift import Dataset, load_sift_1m
 from client import get_client
-from partitioner import Partitioner, RangePartitioner
 from attributes import uniform_attributes_basic
 from utils import Timer
 
