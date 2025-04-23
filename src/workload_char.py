@@ -6,6 +6,16 @@ from workload import Workload
 
 
 def counter_characterize_workload(workload: List[Predicate]) -> List[Tuple[Predicate, int]]:
+    """Characterize a workload by counting the frequencies of atomic predicates.
+
+    Args:
+        workload (List[Predicate]): List of filter predicates in the workload.
+
+    Returns:
+        List[Tuple[Predicate, int]]: List of (atomic predicate, frequency) pairs, 
+            sorted in decreasing order by frequency
+    """
+
     atomics = (atomic for pred in workload for atomic in pred.atomics())
     return list(sorted(Counter(atomics).items(), key=lambda x: x[1], reverse=True))
 
