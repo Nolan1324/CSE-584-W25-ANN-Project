@@ -3,35 +3,70 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
-import uuid
 
 import numpy as np
 from attributes import uniform_attributes
 from predicates import And, Atomic, Not, Operator, Range
-from workload_char import counter_characterize_workload
 
 import numpy.typing as npt
 
-
 @dataclass
 class TreeAlgoParams():
+    """Parameters for the tree partitioning algorithm.
+
+    Attributes:
+        min_predicate_frequency (int): The minimum number of times an atomic predicate must appear 
+            in the workload to be considered.
+
+        selectivity_threshold (float): The minimum selectivity on the current split of data an atomic 
+            predicate must have to be considered. This applies to both the true and false branches; 
+            i.e., both branches must include at least (selectivity_threshold * 100)% of the data 
+            in the current split.
+
+        min_partition_size (int): The minimum number of vectors that can be in a partition leaf node.
+
+        max_num_partitions (int): The maximum number of partitions that the algorithm can create.
+    """
+
     min_predicate_frequency: int = 10
-    selectivity_threshold: int = 0.11
+    selectivity_threshold: float = 0.11
     min_partition_size: int = 1_000
     max_num_partitions: int = 4096
 
 
 @dataclass
-class Node():
+class PartitionTree():
+    """
+    A node of a partition tree.
+
+    If this is an internal node, `predicate`, `if_true`, and `if_false` will be non-None and `partition_name` will be None.
+    If this is a root node, `predicate`, `if_true`, and `if_false` will be None and `partition_name` will be non-None.
+
+    Attributes:
+        predicate (Atomic | None): If this is an internal node, the atomic predicate that this node splits on. `None` otherwise.
+        if_true (PartitionTree | None): Sub-tree to visit if the predicate evaluates to True.
+        if_false (PartitionTree | None): Sub-tree to visit if the predicate evaluates to False.
+        partition_name (str | None): If this is a leaf node, the name of the partition represented by this node. `None` otherwise.
+    """
+
     predicate: Atomic = None
-    if_true: Node = None
-    if_false: Node = None
+    if_true: PartitionTree = None
+    if_false: PartitionTree = None
     partition_name: str = None
 
     def assert_well_formed(self):
         assert(bool(self.predicate and self.if_true and self.if_false) != bool(self.partition_name))
 
     def find_partition(self, vals: Dict[str, int]) -> str:
+        """Given a set of scalar attributes of a vector, recursively search for the partition containing that vector.
+
+        Args:
+            vals (Dict[str, int]): Mapping from scalar attribute name to value. Must contain all scalar attributes.
+        
+        Returns:
+            str: Name of the partition containing the vector.
+        """
+
         self.assert_well_formed()
         if self.partition_name:
             return self.partition_name
@@ -56,7 +91,23 @@ class Node():
             return out
 
 
-def build_tree(data: npt.NDArray, attr_names: List[str], atomics: List[Tuple[Atomic, int]], params: TreeAlgoParams, total_leaves=[1], next_partition_index=[0]) -> Node:
+def build_tree(data: npt.NDArray, attr_names: List[str], atomics: List[Tuple[Atomic, int]], params: TreeAlgoParams) -> PartitionTree:
+    """Build a partition tree from a dataset and set of atomic predicates.
+
+    Args:
+        data (npt.NDArray): Data array with shape (n,d) and dtype np.int32. Each row should represent a vector, and each column should represent a scalar attribute.
+        attr_names (List[str]): Names of the scalar attributes in `data`. `attr_names[i]` should be the name of attribute column `data[:,i]`.
+        atomics (List[Tuple[Atomic, int]]): List of atomic predicates, along with how frequently each occured.
+        params (TreeAlgoParams): Parameters for the algorithm. Pass TreeAlgoParams() for default parameters.
+
+    Returns:
+        PartitionTree: The root node of the partition tree.
+    """
+
+    return _build_tree_helper(data, attr_names, list(sorted(atomics, key=lambda x: x[1], reverse=True)), params)
+
+
+def _build_tree_helper(data: npt.NDArray, attr_names: List[str], atomics: List[Tuple[Atomic, int]], params: TreeAlgoParams, total_leaves=[1], next_partition_index=[0]) -> PartitionTree:
     assert(len(data.shape) == 2)
     assert(data.shape[1] == len(attr_names))
     
@@ -79,16 +130,26 @@ def build_tree(data: npt.NDArray, attr_names: List[str], atomics: List[Tuple[Ato
             if_true = build_tree(data[bit_mask], attr_names, atomics[i+1:], params)
             if_false = build_tree(data[~bit_mask], attr_names, atomics[i+1:], params)
 
-            return Node(if_true=if_true, if_false=if_false, predicate=atomic_pred) 
+            return PartitionTree(if_true=if_true, if_false=if_false, predicate=atomic_pred) 
     
     partition_name = f"part_{next_partition_index[0]}"
     next_partition_index[0] += 1
-    return Node(partition_name=partition_name)
+    return PartitionTree(partition_name=partition_name)
 
-def get_partitions_from_tree(node: Node, cur_ranges: Dict[str, Range] = None) -> Dict[str, Dict[str, Range]]:
-    if cur_ranges is None:
-        cur_ranges = defaultdict(lambda: (None, None))
+def get_partitions_from_tree(node: PartitionTree) -> Dict[str, Dict[str, Range]]:
+    """Given a partition tree, get each partition summarized as a set of scalar ranges on each attribute.
 
+    Args:
+        node (PartitionTree): Root node of the partition tree.
+
+    Returns:
+        Dict[str, Dict[str, Range]]: The resulting partitions. An entry of the form `partitions[partition][x] = Range(a, b)` 
+        indicates that partition `partition` only includes valuse where attribute `x` is in the range `[a, b]`.
+    """
+
+    return _get_partitions_from_tree_helper(node, defaultdict(lambda: (None, None)))
+
+def _get_partitions_from_tree_helper(node: PartitionTree, cur_ranges: Dict[str, Range]) -> Dict[str, Dict[str, Range]]:
     node.assert_well_formed()
     if node.partition_name is None:
         assert(node.predicate.op == Operator.GTE)
@@ -108,7 +169,7 @@ def get_partitions_from_tree(node: Node, cur_ranges: Dict[str, Range] = None) ->
     else:
         return {node.partition_name: dict(cur_ranges)}
 
-def get_example_tree() -> Node:
+def get_example_tree() -> PartitionTree:
     atomics = [(Atomic("x", Operator.GTE, 500), 10), (Atomic("x", Operator.GTE, 100), 9), (Atomic("y", Operator.GTE, 300), 8)]
 
     n = 100000
@@ -128,6 +189,8 @@ if __name__ == '__main__':
     # ]
     # atomics = counter_characterize_workload(workload)
     # print(atomics)
+
+    TreeAlgoParams()
 
     tree = get_example_tree()
     print(tree)

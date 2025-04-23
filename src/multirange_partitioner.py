@@ -3,12 +3,12 @@ from typing import Dict, Generator
 from pymilvus import MilvusClient
 
 from predicates import Operator, Predicate, Range, Atomic
-from tree_partition_algo import Node, get_partitions_from_tree, get_example_tree
+from tree_partition_algo import PartitionTree, get_partitions_from_tree, get_example_tree
 from tvl import Maybe
 
 
 class MultiRangePartitioner:
-    def __init__(self, tree: Node = None, partitions: Dict[str, Range] = None):
+    def __init__(self, tree: PartitionTree = None, partitions: Dict[str, Range] = None):
         self.tree = tree
         if not partitions and tree:
             self.partitions = get_partitions_from_tree(tree)
@@ -20,7 +20,7 @@ class MultiRangePartitioner:
         return cls(partitions=partitions)
 
     @classmethod
-    def from_tree(cls, tree: Node):
+    def from_tree(cls, tree: PartitionTree):
         return cls(tree=tree)
 
     def get_partition(self, vals: Dict[str, int]) -> str:
