@@ -1,4 +1,6 @@
-from typing import Dict, Generator, Self
+from __future__ import annotations
+
+from typing import Dict, Generator
 
 from pymilvus import MilvusClient
 
@@ -28,7 +30,7 @@ class MultiRangePartitioner:
             self.partitions = partitions
 
     @classmethod
-    def from_partitions(cls, partitions: Dict[str, Dict[str, Range]]) -> Self:
+    def from_partitions(cls, partitions: Dict[str, Dict[str, Range]]) -> MultiRangePartitioner:
         """Consturct a MultiRangePartitioner from an explicit list of partitions.
 
         Args:
