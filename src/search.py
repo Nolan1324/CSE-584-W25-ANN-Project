@@ -61,7 +61,7 @@ class Searcher:
                     data=[self.dataset.query[search_vector_id, :]],
                     limit=limit,
                     output_fields=["id"],
-                    filter=str(predicate),
+                    filter=predicate.to_filter_string(),
                     partition_names=partitions,
                 )
 
