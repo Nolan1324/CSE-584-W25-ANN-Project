@@ -1,4 +1,10 @@
-# CSE 584 WN25 ANN Project
+# Workload-Guided Partitioned Filtered Approximate Vector Searches 
+
+CSE 584 WN25 Project
+
+## Abstract
+
+We present a greedy tree-based partitioning system using atomic predicates for a workload-aware vector database. We also designed a novel synthetic dataset to test filtered approximate vector searches which is more complex than the synthetic workloads used in existing work. We ran experiments on this workload to test our algorithm, and concluded that while it has the potential to outperform a greedy range-based partition in terms of recall and query times, more work is needed to fine tune our algorithm.
 
 ## Usage
 
