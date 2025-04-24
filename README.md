@@ -4,6 +4,8 @@
 
 ### Experiments
 
+With your Python virtual environment activated, from the `bin` directory where the `standalone_embed.sh` script was installed, run `python ../src/tree_experiment.py` to the run the experiment. Expect it to run overnight.
+
 ### Example
 
 `example.py` provides a simple example of using the partitioning system. Run it with `python example.py` while running the Milvus docker container. It creates a collection of vectors with two attributes, `x` and `y`. It then characterizes a simple workload of three filters, builds a partition tree with 4 partitions, and then conducts a basic filtered vector search which is able to skip one of the partitions.
