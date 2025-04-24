@@ -28,3 +28,5 @@ Below is a summary of the functions that each file implements. See the docstring
     - `range_may_satisfy(self, ranges: Dict[str, Range]) -> TVL` - determines if a range of data **may** satisfy the predicate. Returns a three-value logic truth value (`True`, `Maybe`, or `False`)
     - `atomics(self) -> Generator[Atomic, None, None]` - breaks the predicate down into atomic predicates
     - `to_filter_string(self) -> str` - converts the predicate to a string that can be passed as a filter to Milvus
+- `experiment_utils.py` - contains utility functions to help the user run experiments, including logic to create and clean up database instances
+- `tree_experiment.py` - the experiment that we ran for our presentation and report
