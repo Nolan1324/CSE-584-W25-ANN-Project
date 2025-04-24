@@ -53,7 +53,6 @@ data
 │       ├── siftsmall_groundtruth.ivecs
 │       ├── siftsmall_learn.fvecs
 │       └── siftsmall_query.fvecs
-└── download_datasets.sh
 ```
 
 ### Step 4: Setup Configuration Files
