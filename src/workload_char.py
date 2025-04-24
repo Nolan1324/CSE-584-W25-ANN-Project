@@ -1,6 +1,5 @@
-
 from collections import Counter
-from typing import Iterable, List, Tuple
+from typing import List, Tuple
 from predicates import Not, Predicate, And, Atomic, Operator
 from workload import Workload
 
@@ -12,7 +11,7 @@ def counter_characterize_workload(workload: List[Predicate]) -> List[Tuple[Predi
         workload (List[Predicate]): List of filter predicates in the workload.
 
     Returns:
-        List[Tuple[Predicate, int]]: List of (atomic predicate, frequency) pairs, 
+        List[Tuple[Predicate, int]]: List of (atomic predicate, frequency) pairs,
             sorted in decreasing order by frequency
     """
 
@@ -20,10 +19,10 @@ def counter_characterize_workload(workload: List[Predicate]) -> List[Tuple[Predi
     return list(sorted(Counter(atomics).items(), key=lambda x: x[1], reverse=True))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     workload = [
         And(Atomic("x", Operator.GTE, 5), Not(Atomic("y", Operator.GTE, 10))),
-        Atomic("x", Operator.GTE, 5)
+        Atomic("x", Operator.GTE, 5),
     ]
     workload = Workload.create_and_sample_synthetic_workload(100, ["w", "x", "y", "z"])
     print(workload)

@@ -21,7 +21,15 @@ def confusion(ground_truth: Iterable[int], results: Iterable[int]):
     return tp, fp, fn
 
 
-def test(logger: logging.Logger, schema_config: dict, workflow_config: dict, dataset_config: dict, partitioner, attribute_names, attribute_data) -> dict:
+def test(
+    logger: logging.Logger,
+    schema_config: dict,
+    workflow_config: dict,
+    dataset_config: dict,
+    partitioner,
+    attribute_names,
+    attribute_data,
+) -> dict:
     logger.info("Running search...")
     dataset = load_dataset(dataset_config, base=False)
     logger.info(f"Loaded query dataset: {dataset}")
@@ -31,14 +39,24 @@ def test(logger: logging.Logger, schema_config: dict, workflow_config: dict, dat
     tp_list = []
     fp_list = []
     fn_list = []
-    
+
     query_indices = np.arange(searcher.dataset.query.shape[0])
     np.random.shuffle(query_indices)
     for index in tqdm(query_indices):
         filter_used = random.random() <= workflow_config["filter_percentage"]
         filter_used_list.append(filter_used)
         if filter_used:
-            search_results = searcher.do_search(index, Not(Atomic('x', Operator.GTE, int(dataset_config["max_attribute"] * workflow_config["selectivity"]) + 1)), limit=workflow_config["k"])
+            search_results = searcher.do_search(
+                index,
+                Not(
+                    Atomic(
+                        "x",
+                        Operator.GTE,
+                        int(dataset_config["max_attribute"] * workflow_config["selectivity"]) + 1,
+                    )
+                ),
+                limit=workflow_config["k"],
+            )
         else:
             search_results = searcher.do_search(index, limit=workflow_config["k"])
         tp, fp, fn = confusion(search_results.ground_truth, search_results.results)
@@ -47,7 +65,7 @@ def test(logger: logging.Logger, schema_config: dict, workflow_config: dict, dat
         fn_list.append(fn)
         times.append(search_results.time)
     logger.info("Search complete.")
-    
+
     return {
         "search_times": times,
         "filter_used": filter_used_list,
@@ -65,7 +83,7 @@ def test(logger: logging.Logger, schema_config: dict, workflow_config: dict, dat
 if __name__ == "__main__":
     name = "partition_baseline"
     function = test
-    
+
     experiment_grid = {
         "kill_on_fail": False,
         "trials": 1,
@@ -83,7 +101,7 @@ if __name__ == "__main__":
             "name": "sift_1b",
             "size": 10,
             "max_attribute": 1_000,
-        }
+        },
     }
-    
+
     run_experiment(name, experiment_grid, function)

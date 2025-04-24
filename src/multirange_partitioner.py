@@ -10,16 +10,15 @@ from tvl import Maybe
 
 
 class MultiRangePartitioner:
-    """A vector partitioner that partitions based on ranges for each scalar attribute.
-    """
+    """A vector partitioner that partitions based on ranges for each scalar attribute."""
 
     def __init__(self, tree: PartitionTree = None, partitions: Dict[str, Dict[str, Range]] = None):
         """Consturct a MultiRangePartitioner. Can either specify it is as a decision tree or as a list of ranges.
 
         Args:
             tree (PartitionTree, optional): A decision tree to locate each partition.
-            partitions (Dict[str, Dict[str, Range]], optional): An explicit list of each partition and the ranges associated with it. 
-                An entry of the form `partitions[partition][x] = Range(a, b)` indicates that partition `partition` only includes valuse 
+            partitions (Dict[str, Dict[str, Range]], optional): An explicit list of each partition and the ranges associated with it.
+                An entry of the form `partitions[partition][x] = Range(a, b)` indicates that partition `partition` only includes valuse
                 where attribute `x` is in the range `[a, b]`.
         """
 
@@ -34,8 +33,8 @@ class MultiRangePartitioner:
         """Consturct a MultiRangePartitioner from an explicit list of partitions.
 
         Args:
-            partitions (Dict[str, Range]): An explicit list of each partition and the ranges associated with it. 
-                An entry of the form `partitions[partition][x] = Range(a, b)` indicates that partition `partition` only includes valuse 
+            partitions (Dict[str, Range]): An explicit list of each partition and the ranges associated with it.
+                An entry of the form `partitions[partition][x] = Range(a, b)` indicates that partition `partition` only includes valuse
                 where attribute `x` is in the range `[a, b]`.
 
         Returns:
@@ -73,9 +72,7 @@ class MultiRangePartitioner:
                     if attr_name not in ranges:
                         continue
                     start, end = ranges[attr_name]
-                    if (start is not None and val < start) or (
-                        end is not None and val > end
-                    ):
+                    if (start is not None and val < start) or (end is not None and val > end):
                         break
                 else:
                     return partition_name
@@ -103,14 +100,11 @@ class MultiRangePartitioner:
         """
 
         for name in self.partition_names:
-            client.create_partition(
-                collection_name=collection_name, partition_name=name
-            )
+            client.create_partition(collection_name=collection_name, partition_name=name)
 
     @property
     def partition_names(self):
-        """Names of all the partitions.
-        """
+        """Names of all the partitions."""
         return self.partitions.keys()
 
     def __str__(self):

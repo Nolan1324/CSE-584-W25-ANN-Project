@@ -132,11 +132,11 @@ class Atomic(Predicate):
     def atomics(self) -> Generator[Atomic, None, None]:
         """
         A generator method that yields the current instance as an atomic element.
-        
+
         Yields:
             The current instance as an atomic element.
         """
-        
+
         yield self
 
     def to_filter_string(self) -> str:

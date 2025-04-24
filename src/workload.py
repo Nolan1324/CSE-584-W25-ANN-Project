@@ -50,14 +50,16 @@ class QueryEntry:
 class Workload:
     def __init__(self, entries: list[QueryEntry] = None):
         self.entries = entries or []
-    
+
     @classmethod
     def create_synthetic_workload(cls, attributes: list[str]) -> list[Predicate]:
         n_attributes = len(attributes)
         query_attribute_distribution = sample_discrete_exponential(n_attributes, 0.25)
-        query_selectivity_distributions = {attribute: sample_discrete_exponential(9, 0.25) for attribute in attributes}
+        query_selectivity_distributions = {
+            attribute: sample_discrete_exponential(9, 0.25) for attribute in attributes
+        }
         query_length_distribution = sample_discrete_exponential(n_attributes, 0.25)
-        query_type_distribution = [0, 1/3, 1/3, 1/3]
+        query_type_distribution = [0, 1 / 3, 1 / 3, 1 / 3]
         query_type_distribution = np.array(query_type_distribution) / np.sum(query_type_distribution)
         return (
             attributes,
@@ -66,7 +68,7 @@ class Workload:
             query_length_distribution,
             query_type_distribution,
         )
-    
+
     @classmethod
     def sample_synthetic_workload(
         cls,
@@ -79,13 +81,13 @@ class Workload:
     ) -> list[Predicate]:
         entries: list[Predicate] = []
         rng = np.random.default_rng()
-        
+
         percentiles = {attribute: np.arange(100, 1000, 100) for attribute in attributes}
-        
+
         def sampe_atomic_predicate(attribute: str) -> Atomic:
             selectivity = rng.choice(percentiles[attribute], p=query_selectivity_distributions[attribute])
             return Atomic(attr=attribute, op=Operator.GTE, value=int(selectivity))
-        
+
         for _ in range(n_samples):
             query_type = rng.choice(["none", "single", "and", "or"], p=query_type_distribution)
             match query_type:
@@ -94,12 +96,20 @@ class Workload:
                 case "single":
                     predicate = sampe_atomic_predicate(rng.choice(attributes, p=query_attribute_distribution))
                 case "and":
-                    num_predicates = rng.choice(len(query_attribute_distribution), p=query_length_distribution)
-                    selected_attributes = rng.choice(attributes, p=query_attribute_distribution, size=num_predicates, replace=False)
+                    num_predicates = rng.choice(
+                        len(query_attribute_distribution), p=query_length_distribution
+                    )
+                    selected_attributes = rng.choice(
+                        attributes, p=query_attribute_distribution, size=num_predicates, replace=False
+                    )
                     predicate = And(*[sampe_atomic_predicate(attr) for attr in selected_attributes])
                 case "or":
-                    num_predicates = rng.choice(len(query_attribute_distribution), p=query_length_distribution)
-                    selected_attributes = rng.choice(attributes, p=query_attribute_distribution, size=num_predicates, replace=False)
+                    num_predicates = rng.choice(
+                        len(query_attribute_distribution), p=query_length_distribution
+                    )
+                    selected_attributes = rng.choice(
+                        attributes, p=query_attribute_distribution, size=num_predicates, replace=False
+                    )
                     predicate = Or(*[sampe_atomic_predicate(attr) for attr in selected_attributes])
             if predicate is not None:
                 entries.append(predicate)
@@ -110,26 +120,26 @@ class Workload:
         predicates = []
         with open(Path(filepath), "r", encoding="utf-8") as file:
             for line in file:
-                if (num_queries == 0):
+                if num_queries == 0:
                     break
                 num_queries -= 1
                 try:
                     data = json.loads(line)
-                    
-                    for attr in data['conditions']['and'][0].keys():
-                        op = list(data['conditions']['and'][0][attr].keys())[0]
-                        if (op != 'range'):
+
+                    for attr in data["conditions"]["and"][0].keys():
+                        op = list(data["conditions"]["and"][0][attr].keys())[0]
+                        if op != "range":
                             continue
-                        range = data['conditions']['and'][0][attr][op]
-                        GTE_pred = Atomic(attr, Operator.GTE, range['gt'] + 1)
-                        LTE_pred = Not(Atomic(attr, Operator.LTE, range['lt'] - 1))
+                        range = data["conditions"]["and"][0][attr][op]
+                        GTE_pred = Atomic(attr, Operator.GTE, range["gt"] + 1)
+                        LTE_pred = Not(Atomic(attr, Operator.LTE, range["lt"] - 1))
                         predicates.append(GTE_pred)
                         predicates.append(LTE_pred)
                         entry = QueryEntry(
                             query=data["query"],
                             predicates=[GTE_pred, LTE_pred],
                             closest_ids=data["closest_ids"],
-                            closest_scores=data["closest_scores"]
+                            closest_scores=data["closest_scores"],
                         )
                         self.entries.append(entry)
 
@@ -142,7 +152,8 @@ class Workload:
 
     def __getitem__(self, idx):
         return self.entries[idx]
-    
+
+
 if __name__ == "__main__":
     workload = Workload()
     predicates = workload.load_from_jsonl(WORKLOAD_PATH / "tests.jsonl", 1000000)

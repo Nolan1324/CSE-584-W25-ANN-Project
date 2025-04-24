@@ -18,15 +18,14 @@ from utils import Timer
 class Creator:
     """
     A class to manage the creation, population, and maintenance of a collection in a database.
-    
+
     Attributes:
         partitioner: An optional partitioner to manage partitions in the collection.
         attributes: A list of attribute names to be included in the collection schema.
         datatype: The data type of the vector field in the collection.
         logger: A logger instance for logging operations. If not provided, a default logger is used.
     """
-    
-    
+
     def __init__(
         self,
         partitioner: Optional[MultiRangePartitioner] = None,
@@ -47,7 +46,7 @@ class Creator:
         Args:
             name: The name of the collection to create. Defaults to "data".
         """
-        
+
         if self.client.has_collection(name):
             self.client.drop_collection(name)
 
@@ -108,7 +107,7 @@ class Creator:
         Returns:
             None
         """
-        
+
         assert len(attributes_data.shape) == 2
         assert dataset.num_base_vecs == attributes_data.shape[0]
 

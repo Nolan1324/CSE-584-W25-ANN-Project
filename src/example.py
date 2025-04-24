@@ -51,7 +51,7 @@ def create_schema(client: MilvusClient, partitioner: MultiRangePartitioner):
         schema=schema,
     )
 
-    partitioner.add_partitions_to_collection(client, 'data')
+    partitioner.add_partitions_to_collection(client, "data")
 
 
 def insert_data(
@@ -125,7 +125,7 @@ def search(
         filter=predicate.to_filter_string(),
         partition_names=partitions,
     )
-    return [data['id'] for data in result[0]]
+    return [data["id"] for data in result[0]]
 
 
 def main():
@@ -133,17 +133,13 @@ def main():
 
     base_dataset = load_sift_small(dataset_path, base=True)
     rng = np.random.default_rng(584)
-    attribute_data_array = rng.uniform(0, 1000, (base_dataset.num_base_vecs, 2)).astype(
-        np.int32
-    )
+    attribute_data_array = rng.uniform(0, 1000, (base_dataset.num_base_vecs, 2)).astype(np.int32)
 
     partitioner = create_partitioner(attribute_data_array)
 
     data_list = [
         {"id": i, "vector": list(vector), "x": x, "y": y}
-        for i, (vector, [x, y]) in enumerate(
-            zip(base_dataset.base, attribute_data_array)
-        )
+        for i, (vector, [x, y]) in enumerate(zip(base_dataset.base, attribute_data_array))
     ]
 
     client = get_client()
@@ -159,14 +155,12 @@ def main():
         Not(Atomic("x", GTE, 400)),
     )
     result = search(client, partitioner, query_vector, predicate)
-    print(f'Search result: {result}')
+    print(f"Search result: {result}")
 
     ground_truth = [
-        i
-        for i in query_dataset.ground_truth[query_vector_index]
-        if predicate.evaluate(data_list[i])
+        i for i in query_dataset.ground_truth[query_vector_index] if predicate.evaluate(data_list[i])
     ]
-    print(f'Filtered ground truth: {ground_truth}')
+    print(f"Filtered ground truth: {ground_truth}")
 
 
 if __name__ == "__main__":
